@@ -21,7 +21,15 @@ const getUploadUrl = async (key: string, contentType: string, expiresIn = 300): 
   return getSignedUrl(s3Client, command, { expiresIn });
 };
 
+const getPublicUrl = (key: string): string => {
+  const baseUrl =
+    env.AWS_S3_PUBLIC_BASE_URL || `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com`;
+
+  return `${baseUrl.replace(/\/$/, '')}/${key}`;
+};
+
 export const s3Service = {
   client: s3Client,
   getUploadUrl,
+  getPublicUrl,
 };

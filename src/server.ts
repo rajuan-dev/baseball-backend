@@ -7,12 +7,14 @@ import { connectDatabase } from './app/config/database';
 import { env } from './app/config/env';
 import { logger } from './app/logger';
 import { adminService } from './app/modules/admin/admin.service';
+import { bootstrapService } from './app/services/bootstrap.service';
 
 const server = http.createServer(app);
 
 const bootstrap = async (): Promise<void> => {
   await connectDatabase();
   await adminService.seedDefaultAdmin();
+  await bootstrapService.seedApplicationData();
 
   server.listen(env.PORT, () => {
     logger.info('Server started', {

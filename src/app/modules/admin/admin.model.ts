@@ -36,6 +36,16 @@ const adminSchema = new Schema<IAdmin, AdminModel>(
       type: Boolean,
       default: true,
     },
+    image: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    contactNo: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     versionKey: false,
