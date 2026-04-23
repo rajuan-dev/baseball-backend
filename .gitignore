@@ -30,6 +30,7 @@ Thumbs.db
 # temp
 tmp/
 temp/
+storage/uploads/
 
 # misc
 *.pid

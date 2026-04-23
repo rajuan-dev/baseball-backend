@@ -8,4 +8,9 @@ export const uploadValidation = {
       folder: z.string().min(1).default('general').optional(),
     }),
   }),
+  uploadFile: z.object({
+    body: z.object({
+      folder: z.string().min(1).default('general').optional(),
+    }),
+  }),
 };

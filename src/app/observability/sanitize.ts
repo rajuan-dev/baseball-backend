@@ -77,25 +77,27 @@ export const sanitizeForLogging = (value: unknown): unknown => {
   return sanitizeInternal(value, new WeakSet<object>());
 };
 
-const pickFileMetadata = (file: Record<string, unknown>): Record<string, unknown> => {
+const pickFileMetadata = (file: Express.Multer.File | Record<string, unknown>): Record<string, unknown> => {
   return sanitizeForLogging({
     fieldname: file.fieldname,
     originalname: file.originalname,
     mimetype: file.mimetype,
     encoding: file.encoding,
     size: file.size,
-    filename: file.filename,
-    path: file.path,
-    destination: file.destination,
-    location: file.location,
-    key: file.key,
+    filename: 'filename' in file ? file.filename : undefined,
+    path: 'path' in file ? file.path : undefined,
+    destination: 'destination' in file ? file.destination : undefined,
+    location: 'location' in file ? file.location : undefined,
+    key: 'key' in file ? file.key : undefined,
   }) as Record<string, unknown>;
 };
 
 export const getUploadedFilesMetadata = (req: Request): unknown => {
   const fileRequest = req as Request & {
-    file?: Record<string, unknown>;
-    files?: Record<string, unknown> | Record<string, unknown>[];
+    file?: Express.Multer.File;
+    files?:
+      | Express.Multer.File[]
+      | Record<string, Express.Multer.File | Express.Multer.File[]>;
   };
 
   if (fileRequest.file) {
@@ -110,8 +112,8 @@ export const getUploadedFilesMetadata = (req: Request): unknown => {
     const entries = Object.entries(fileRequest.files).map(([field, value]) => [
       field,
       Array.isArray(value)
-        ? value.map((file) => pickFileMetadata(file as Record<string, unknown>))
-        : pickFileMetadata(value as Record<string, unknown>),
+        ? value.map((file) => pickFileMetadata(file))
+        : pickFileMetadata(value),
     ]);
 
     return Object.fromEntries(entries);

@@ -2,8 +2,10 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import type { RequestHandler } from 'express';
+import path from 'node:path';
 
 import { env } from './app/config/env';
+import { localUploadsRoot } from './app/config/paths';
 import { globalErrorHandler } from './app/middlewares/globalErrorHandler';
 import { notFoundHandler } from './app/middlewares/notFoundHandler';
 import { httpLogger, requestPayloadLogger } from './app/middlewares/requestLogger';
@@ -20,6 +22,10 @@ app.use(
     origin: true,
     credentials: true,
   }),
+);
+app.use(
+  env.LOCAL_UPLOADS_BASE_PATH,
+  express.static(path.resolve(localUploadsRoot)) as RequestHandler,
 );
 app.use(requestPayloadLogger as RequestHandler);
 

@@ -34,7 +34,7 @@ const transport =
           translateTime: 'SYS:standard',
           ignore: 'pid,hostname',
           messageFormat: '{msg}',
-          singleLine: true,
+          singleLine: false,
         },
       })
     : undefined;

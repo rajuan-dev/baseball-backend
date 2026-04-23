@@ -20,7 +20,9 @@ const bootstrap = async (): Promise<void> => {
     logger.info('Server started', {
       port: env.PORT,
       env: env.NODE_ENV,
-      baseUrl: `http://localhost:${env.PORT}${env.API_PREFIX}`,
+      baseUrl: `${(env.APP_BASE_URL || `http://localhost:${env.PORT}`).replace(/\/$/, '')}${env.API_PREFIX}`,
+      storageProvider: env.STORAGE_PROVIDER,
+      uploadMode: env.UPLOAD_MODE,
     });
   });
 };

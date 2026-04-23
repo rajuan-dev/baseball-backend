@@ -20,8 +20,8 @@ export const httpLogger = pinoHttp({
       requestId: (req as Request & { id?: string }).id ?? null,
       method: req.method,
       url: req.url,
-      remoteAddress: req.socket.remoteAddress,
-      remotePort: req.socket.remotePort,
+      remoteAddress: req.socket?.remoteAddress ?? null,
+      remotePort: req.socket?.remotePort ?? null,
     }),
     res: (res) => ({
       statusCode: res.statusCode,
