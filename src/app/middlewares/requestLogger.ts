@@ -1,37 +1,72 @@
-import { NextFunction, Request, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 
-import { logger } from '../logger';
+import { NextFunction, Request, RequestHandler, Response } from 'express';
+import pinoHttp from 'pino-http';
 
-const sanitizeBody = (body: unknown): unknown => {
-  if (!body || typeof body !== 'object') {
-    return body;
-  }
+import { pinoLogger } from '../logger';
+import { getUploadedFilesMetadata, sanitizeForLogging } from '../observability/sanitize';
+import { getRequestId, resolveRequestId } from '../observability/requestContext';
 
-  const cloned = { ...(body as Record<string, unknown>) };
+export const httpLogger = pinoHttp({
+  logger: pinoLogger,
+  genReqId: (req, res) => {
+    return resolveRequestId(req as Request, res as Response);
+  },
+  customAttributeKeys: {
+    reqId: 'requestId',
+  },
+  serializers: {
+    req: (req) => ({
+      requestId: (req as Request & { id?: string }).id ?? null,
+      method: req.method,
+      url: req.url,
+      remoteAddress: req.socket.remoteAddress,
+      remotePort: req.socket.remotePort,
+    }),
+    res: (res) => ({
+      statusCode: res.statusCode,
+    }),
+    err: (error) => ({
+      type: error.name,
+      message: error.message,
+      stack: error.stack,
+    }),
+  },
+  customSuccessMessage: () => 'request completed',
+  customErrorMessage: (_req, _res, error) => error?.message ?? 'request failed',
+}) as RequestHandler;
 
-  for (const key of ['password', 'confirmPassword', 'token', 'otp']) {
-    if (key in cloned) {
-      cloned[key] = '[REDACTED]';
-    }
-  }
-
-  return cloned;
+const getFallbackRequestLogger = (req: Request) => {
+  return (
+    (req as Request & { log?: typeof pinoLogger }).log ??
+    pinoLogger.child({
+      requestId: getRequestId(req) ?? randomUUID(),
+    })
+  );
 };
 
-export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
-  const startedAt = Date.now();
+export const requestPayloadLogger = (req: Request, res: Response, next: NextFunction): void => {
+  const startedAt = process.hrtime.bigint();
 
   res.on('finish', () => {
-    logger.info('HTTP request completed', {
-      method: req.method,
-      route: req.originalUrl,
-      statusCode: res.statusCode,
-      ip: req.ip,
-      params: req.params,
-      query: req.query,
-      body: sanitizeBody(req.body),
-      durationMs: Date.now() - startedAt,
-    });
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+
+    getFallbackRequestLogger(req).info(
+      {
+        event: 'http.request.payload',
+        requestId: getRequestId(req),
+        method: req.method,
+        url: req.originalUrl,
+        contentType: req.headers['content-type'] ?? null,
+        query: sanitizeForLogging(req.query),
+        params: sanitizeForLogging(req.params),
+        body: sanitizeForLogging(req.body),
+        files: getUploadedFilesMetadata(req),
+        statusCode: res.statusCode,
+        durationMs: Number(durationMs.toFixed(2)),
+      },
+      'HTTP request payload',
+    );
   });
 
   next();

@@ -1,4 +1,4 @@
-import { ErrorRequestHandler } from 'express';
+import { ErrorRequestHandler, Request } from 'express';
 import { Error as MongooseError } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 import { ZodError } from 'zod';
@@ -9,9 +9,20 @@ import { handleCastError } from '../errors/handleCastError';
 import { handleDuplicateError } from '../errors/handleDuplicateError';
 import { handleValidationError } from '../errors/handleValidationError';
 import { handleZodError } from '../errors/handleZodError';
-import { logger } from '../logger';
+import { pinoLogger } from '../logger';
+import { getRequestId } from '../observability/requestContext';
+import { sanitizeForLogging } from '../observability/sanitize';
 
-export const globalErrorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+const getRequestLogger = (req: Request) => {
+  return (
+    (req as Request & { log?: typeof pinoLogger }).log ??
+    pinoLogger.child({
+      requestId: getRequestId(req),
+    })
+  );
+};
+
+export const globalErrorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   let statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
   let message = 'Something went wrong';
   let errorSources: { path: string | number; message: string }[] = [];
@@ -44,17 +55,39 @@ export const globalErrorHandler: ErrorRequestHandler = (error, _req, res, _next)
     message = error.message;
   }
 
-  logger.error('Global error handler caught an error', {
-    statusCode,
-    message,
-    errorSources,
-    stack: error instanceof Error ? error.stack : undefined,
-  });
+  const requestId = getRequestId(req);
+
+  getRequestLogger(req).error(
+    {
+      event: 'http.request.error',
+      requestId,
+      method: req.method,
+      url: req.originalUrl,
+      ip: req.ip,
+      userAgent: req.get('user-agent') ?? null,
+      params: sanitizeForLogging(req.params),
+      query: sanitizeForLogging(req.query),
+      body: sanitizeForLogging(req.body),
+      statusCode,
+      errorSources,
+      err:
+        error instanceof Error
+          ? {
+              type: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
+    },
+    'Request failed',
+  );
 
   res.status(statusCode).json({
     success: false,
     message,
     errorSources,
+    requestId,
+    timestamp: new Date().toISOString(),
     stack: env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined,
   });
 };

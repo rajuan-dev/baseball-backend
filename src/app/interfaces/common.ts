@@ -11,6 +11,7 @@ export type ExpressRequest<
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
-  data?: T;
-  meta?: Record<string, unknown>;
+  data: T | null;
+  meta: Record<string, unknown> | null;
+  timestamp: string;
 }
