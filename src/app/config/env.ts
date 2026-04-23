@@ -3,6 +3,15 @@ import { z } from 'zod';
 
 dotenv.config({ quiet: true });
 
+const emptyStringToUndefined = <TSchema extends z.ZodTypeAny>(schema: TSchema) =>
+  z.preprocess((value) => {
+    if (typeof value === 'string' && value.trim() === '') {
+      return undefined;
+    }
+
+    return value;
+  }, schema);
+
 const uploadDriverSchema = z.enum(['local', 's3']).default('local');
 const uploadModeSchema = z.enum(['server', 'presigned']).default('server');
 
@@ -11,7 +20,9 @@ const envSchema = z
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     PORT: z.coerce.number().int().positive().default(5000),
     API_PREFIX: z.string().default('/api/v1'),
-    APP_BASE_URL: z.string().url('APP_BASE_URL must be a valid URL').optional(),
+    APP_BASE_URL: emptyStringToUndefined(
+      z.string().url('APP_BASE_URL must be a valid URL').optional(),
+    ),
     MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
     LOG_LEVEL: z.string().default('info'),
     DEFAULT_ADMIN_NAME: z.string().min(1, 'DEFAULT_ADMIN_NAME is required'),
@@ -24,13 +35,17 @@ const envSchema = z
     UPLOAD_MODE: uploadModeSchema,
     LOCAL_UPLOADS_DIR: z.string().default('storage/uploads'),
     LOCAL_UPLOADS_BASE_PATH: z.string().default('/uploads'),
-    LOCAL_FILE_BASE_URL: z.string().url('LOCAL_FILE_BASE_URL must be a valid URL').optional(),
+    LOCAL_FILE_BASE_URL: emptyStringToUndefined(
+      z.string().url('LOCAL_FILE_BASE_URL must be a valid URL').optional(),
+    ),
     MAX_UPLOAD_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
-    AWS_REGION: z.string().optional(),
-    AWS_S3_BUCKET: z.string().optional(),
-    AWS_ACCESS_KEY_ID: z.string().optional(),
-    AWS_SECRET_ACCESS_KEY: z.string().optional(),
-    AWS_S3_PUBLIC_BASE_URL: z.string().url('AWS_S3_PUBLIC_BASE_URL must be a valid URL').optional(),
+    AWS_REGION: emptyStringToUndefined(z.string().optional()),
+    AWS_S3_BUCKET: emptyStringToUndefined(z.string().optional()),
+    AWS_ACCESS_KEY_ID: emptyStringToUndefined(z.string().optional()),
+    AWS_SECRET_ACCESS_KEY: emptyStringToUndefined(z.string().optional()),
+    AWS_S3_PUBLIC_BASE_URL: emptyStringToUndefined(
+      z.string().url('AWS_S3_PUBLIC_BASE_URL must be a valid URL').optional(),
+    ),
     RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
     RESEND_FROM_EMAIL: z.email('RESEND_FROM_EMAIL must be a valid email'),
   })
