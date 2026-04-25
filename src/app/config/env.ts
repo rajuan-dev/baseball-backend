@@ -18,6 +18,7 @@ const uploadModeSchema = z.enum(['server', 'presigned']).default('server');
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    HOST: z.string().default('0.0.0.0'),
     PORT: z.coerce.number().int().positive().default(5000),
     API_PREFIX: z.string().default('/api/v1'),
     APP_BASE_URL: emptyStringToUndefined(

@@ -4,6 +4,7 @@ import { StatusCodes } from 'http-status-codes';
 import { ApiError } from '../../errors/ApiError';
 import { env } from '../../config/env';
 import { logger } from '../../logger';
+import { buildPublicFileUrl } from '../../utils/fileUrl';
 
 import { Admin } from './admin.model';
 
@@ -16,11 +17,13 @@ const seedDefaultAdmin = async (): Promise<void> => {
     const needsUpdate =
       existingAdmin.name !== env.DEFAULT_ADMIN_NAME ||
       existingAdmin.role !== 'super_admin' ||
+      existingAdmin.isActive !== true ||
       !existingAdmin.contactNo;
 
     if (needsUpdate) {
       existingAdmin.name = env.DEFAULT_ADMIN_NAME;
       existingAdmin.role = 'super_admin';
+      existingAdmin.isActive = true;
       existingAdmin.contactNo = existingAdmin.contactNo || '+1 222 333 4444';
       await existingAdmin.save();
     }
@@ -67,7 +70,7 @@ const createAdmin = async (payload: {
     name: admin.name,
     email: admin.email,
     role: 'Super Admin',
-    image: admin.image || '',
+    image: buildPublicFileUrl(admin.image),
     contactNo: admin.contactNo || '',
   };
 };
@@ -83,7 +86,7 @@ const getProfile = async (adminId: string) => {
     name: admin.name,
     email: admin.email,
     role: 'Super Admin',
-    image: admin.image || '',
+    image: buildPublicFileUrl(admin.image),
     contactNo: admin.contactNo || '',
   };
 };
@@ -124,7 +127,7 @@ const updateProfile = async (
     name: admin.name,
     email: admin.email,
     role: 'Super Admin',
-    image: admin.image || '',
+    image: buildPublicFileUrl(admin.image),
     contactNo: admin.contactNo || '',
   };
 };

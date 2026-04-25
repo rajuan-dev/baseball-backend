@@ -2,29 +2,34 @@ import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
+import { buildPublicFileUrl } from '../../utils/fileUrl';
 import { drillModel } from '../drill/drill.model';
 
 import { drillCategoryModel } from './drill-category.model';
 
 const mapCategory = async (category: Record<string, unknown>) => {
   const totalDrills = await drillModel.countDocuments({ categoryId: category._id });
+  const coverUrl = buildPublicFileUrl(category.cover as string | undefined);
+  const iconUrl = buildPublicFileUrl(category.icon as string | undefined);
 
   return {
     id: String(category._id),
     name: category.name,
     categoryName: category.name,
     subtitle: category.subtitle,
-    cover: category.cover,
-    coverPhoto: category.cover,
-    coverPhotoUrl: category.cover,
-    icon: category.icon,
-    iconUrl: category.icon,
+    cover: coverUrl,
+    coverUrl,
+    coverPhoto: coverUrl,
+    coverPhotoUrl: coverUrl,
+    icon: iconUrl,
+    iconUrl,
     accessLevel: category.accessLevel,
     isPremium: category.accessLevel === 'premium',
     isLocked: category.accessLevel === 'premium',
     totalDrills,
     numberOfDrills: totalDrills,
-    image: category.cover,
+    image: coverUrl,
+    imageUrl: coverUrl,
     accentIcon: category.accentIcon,
     createdAt: category.createdAt,
     updatedAt: category.updatedAt,

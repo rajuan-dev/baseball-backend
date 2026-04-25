@@ -1,25 +1,30 @@
 import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
+import { buildPublicFileUrl } from '../../utils/fileUrl';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 
 import { situationModel } from './situation.model';
 
-const mapSituation = (item: Record<string, unknown>) => ({
-  id: String(item._id),
-  title: item.title,
-  category: item.category,
-  shortLabel: item.shortLabel,
-  featured: item.featured,
-  isFeatured: item.featured,
-  diagramVariant: item.diagramVariant,
-  instructions: item.instructions,
-  image: item.image,
-  imageUrl: item.image,
-  displayOrder: item.displayOrder,
-  createdAt: item.createdAt,
-  updatedAt: item.updatedAt,
-});
+const mapSituation = (item: Record<string, unknown>) => {
+  const imageUrl = buildPublicFileUrl(item.image as string | undefined);
+
+  return {
+    id: String(item._id),
+    title: item.title,
+    category: item.category,
+    shortLabel: item.shortLabel,
+    featured: item.featured,
+    isFeatured: item.featured,
+    diagramVariant: item.diagramVariant,
+    instructions: item.instructions,
+    image: imageUrl,
+    imageUrl,
+    displayOrder: item.displayOrder,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+};
 
 const getAll = async (query: {
   page?: unknown;

@@ -1,6 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
+import { buildPublicFileUrl } from '../../utils/fileUrl';
 
 import { settingsModel } from './settings.model';
 
@@ -22,7 +23,8 @@ const getPublicAppSettings = async () => {
     homeSecondaryCta: settings.homeSecondaryCta,
     featuredSectionTitle: settings.featuredSectionTitle,
     featuredSectionSubtitle: settings.featuredSectionSubtitle,
-    situationImageUri: settings.situationImageUri,
+    situationImageUri: buildPublicFileUrl(settings.situationImageUri),
+    situationImageUrl: buildPublicFileUrl(settings.situationImageUri),
   };
 };
 

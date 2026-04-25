@@ -2,6 +2,7 @@ import mongoose, { PipelineStage } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
+import { buildPublicFileUrl } from '../../utils/fileUrl';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 import { drillCategoryModel } from '../drill-category/drill-category.model';
 
@@ -82,13 +83,22 @@ const getAll = async (query: {
     drillModel.aggregate([...basePipeline, { $count: 'total' }]),
   ]);
 
-  const items = drills.map((item) => ({
-    ...item,
-    id: String(item.id),
-    categoryId: String(item.categoryId),
-    isPremium: item.accessLevel === 'premium',
-    isLocked: item.accessLevel === 'premium',
-  }));
+  const items = drills.map((item) => {
+    const coverUrl = buildPublicFileUrl(item.cover);
+
+    return {
+      ...item,
+      id: String(item.id),
+      categoryId: String(item.categoryId),
+      cover: coverUrl,
+      coverUrl,
+      coverPhoto: coverUrl,
+      coverPhotoUrl: coverUrl,
+      imageUrl: coverUrl,
+      isPremium: item.accessLevel === 'premium',
+      isLocked: item.accessLevel === 'premium',
+    };
+  });
 
   return {
     items,
@@ -103,6 +113,7 @@ const getById = async (id: string) => {
   }
 
   const category = await drillCategoryModel.findById(drill.categoryId).lean();
+  const coverUrl = buildPublicFileUrl(drill.cover);
 
   return {
     id: String(drill._id),
@@ -118,9 +129,11 @@ const getById = async (id: string) => {
       : null,
     categoryName: category?.name || 'Unknown',
     description: drill.description,
-    cover: drill.cover,
-    coverPhoto: drill.cover,
-    coverPhotoUrl: drill.cover,
+    cover: coverUrl,
+    coverUrl,
+    coverPhoto: coverUrl,
+    coverPhotoUrl: coverUrl,
+    imageUrl: coverUrl,
     accessLevel: drill.accessLevel,
     isPremium: drill.accessLevel === 'premium',
     isLocked: drill.accessLevel === 'premium',

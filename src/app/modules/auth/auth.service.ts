@@ -100,6 +100,10 @@ const loginAdmin = async (email: string, password: string) => {
     throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid email or password');
   }
 
+  if (!admin.isActive) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, 'Admin account is unavailable');
+  }
+
   const isMatch = await bcrypt.compare(password, admin.password);
   if (!isMatch) {
     throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid email or password');

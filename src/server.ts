@@ -16,11 +16,14 @@ const bootstrap = async (): Promise<void> => {
   await adminService.seedDefaultAdmin();
   await bootstrapService.seedApplicationData();
 
-  server.listen(env.PORT, () => {
+  server.listen(env.PORT, env.HOST, () => {
     logger.info('Server started', {
+      host: env.HOST,
       port: env.PORT,
       env: env.NODE_ENV,
-      baseUrl: `${(env.APP_BASE_URL || `http://localhost:${env.PORT}`).replace(/\/$/, '')}${env.API_PREFIX}`,
+      baseUrl: env.APP_BASE_URL
+        ? `${env.APP_BASE_URL.replace(/\/$/, '')}${env.API_PREFIX}`
+        : env.API_PREFIX,
       storageProvider: env.STORAGE_PROVIDER,
       uploadMode: env.UPLOAD_MODE,
     });

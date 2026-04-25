@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { env } from '../../../config/env';
 import { localUploadsRoot } from '../../../config/paths';
+import { buildPublicFileUrl } from '../../../utils/fileUrl';
 
 import {
   StorageProvider,
@@ -10,15 +10,6 @@ import {
   UploadDescriptor,
 } from '../interfaces/storage-provider.interface';
 import { buildStorageKey } from '../utils/file';
-
-const getLocalBaseUrl = (): string => {
-  if (env.LOCAL_FILE_BASE_URL) {
-    return env.LOCAL_FILE_BASE_URL.replace(/\/$/, '');
-  }
-
-  const appBaseUrl = env.APP_BASE_URL || `http://localhost:${env.PORT}`;
-  return `${appBaseUrl.replace(/\/$/, '')}${env.LOCAL_UPLOADS_BASE_PATH.replace(/\/$/, '')}`;
-};
 
 const writeFileToDisk = async (key: string, buffer: Buffer): Promise<void> => {
   const absolutePath = path.join(localUploadsRoot, key);
@@ -39,7 +30,7 @@ export class LocalStorageProvider implements StorageProvider {
       provider: this.providerName,
       mode: 'server',
       key,
-      fileUrl: `${getLocalBaseUrl()}/${key}`.replace(/([^:]\/)\/+/g, '$1'),
+      fileUrl: buildPublicFileUrl(key),
     };
   }
 }

@@ -1,6 +1,7 @@
 import { ApiError } from '../../errors/ApiError';
 import { env } from '../../config/env';
 import { storageService } from '../../services/storage.service';
+import { buildPublicFileUrl } from '../../utils/fileUrl';
 
 const createPresignedUpload = async (payload: {
   fileName: string;
@@ -28,12 +29,19 @@ const uploadFile = async (payload: {
 };
 
 const getProviderStatus = async () => {
+  const appBaseUrl = env.APP_BASE_URL?.replace(/\/$/, '') ?? null;
+  const localUploadsBasePath =
+    env.STORAGE_PROVIDER === 'local' ? env.LOCAL_UPLOADS_BASE_PATH : null;
+
   return {
     ...storageService.getProviderSummary(),
     activeMode: env.UPLOAD_MODE,
-    appBaseUrl: env.APP_BASE_URL || `http://localhost:${env.PORT}`,
-    localUploadsBasePath:
-      env.STORAGE_PROVIDER === 'local' ? env.LOCAL_UPLOADS_BASE_PATH : null,
+    appBaseUrl,
+    localUploadsBasePath,
+    localFileBaseUrl:
+      env.STORAGE_PROVIDER === 'local'
+        ? buildPublicFileUrl(env.LOCAL_UPLOADS_BASE_PATH)
+        : null,
     maxUploadFileSizeMb: env.MAX_UPLOAD_FILE_SIZE_MB,
   };
 };
