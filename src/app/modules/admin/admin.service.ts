@@ -134,8 +134,15 @@ const changePassword = async (
   payload: {
     currentPassword: string;
     newPassword: string;
+    confirmPassword?: string;
+    confirmNewPassword?: string;
   },
 ) => {
+  const confirmation = payload.confirmPassword ?? payload.confirmNewPassword;
+  if (confirmation && confirmation !== payload.newPassword) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Passwords do not match');
+  }
+
   const admin = await Admin.findById(adminId).select('+password');
   if (!admin) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Admin profile not found');

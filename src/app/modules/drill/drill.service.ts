@@ -1,15 +1,41 @@
-import mongoose from 'mongoose';
+import mongoose, { PipelineStage } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
+import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 import { drillCategoryModel } from '../drill-category/drill-category.model';
 
 import { drillModel } from './drill.model';
 
-const getAll = async (categoryId?: string) => {
-  const matchStage = categoryId ? { categoryId: new mongoose.Types.ObjectId(categoryId) } : {};
+const getAll = async (query: {
+  page?: unknown;
+  limit?: unknown;
+  categoryId?: unknown;
+  accessLevel?: unknown;
+  search?: unknown;
+} = {}) => {
+  const { page, limit, skip } = getPagination(query);
+  const categoryId = typeof query.categoryId === 'string' ? query.categoryId : '';
+  const accessLevel = typeof query.accessLevel === 'string' ? query.accessLevel.toLowerCase() : '';
+  const search = typeof query.search === 'string' ? query.search.trim() : '';
+  const matchStage: Record<string, unknown> = {};
 
-  const drills = await drillModel.aggregate([
+  if (categoryId && categoryId !== 'all') {
+    matchStage.categoryId = new mongoose.Types.ObjectId(categoryId);
+  }
+
+  if (accessLevel && accessLevel !== 'all') {
+    matchStage.accessLevel = accessLevel === 'locked' ? 'premium' : accessLevel;
+  }
+
+  if (search) {
+    matchStage.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const basePipeline: PipelineStage[] = [
     { $match: matchStage },
     {
       $lookup: {
@@ -32,21 +58,42 @@ const getAll = async (categoryId?: string) => {
         description: 1,
         cover: 1,
         accessLevel: 1,
+        coverPhoto: '$cover',
+        coverPhotoUrl: '$cover',
+        drillName: '$name',
         steps: 1,
         equipment: 1,
         focusPoints: 1,
         createdAt: 1,
+        updatedAt: 1,
         categoryName: '$category.name',
+        category: {
+          id: '$category._id',
+          categoryName: '$category.name',
+          accessLevel: '$category.accessLevel',
+        },
       },
     },
-    { $sort: { createdAt: -1 } },
+    { $sort: { createdAt: -1 as const } },
+  ];
+
+  const [drills, totalResult] = await Promise.all([
+    drillModel.aggregate([...basePipeline, { $skip: skip }, { $limit: limit }]),
+    drillModel.aggregate([...basePipeline, { $count: 'total' }]),
   ]);
 
-  return drills.map((item) => ({
+  const items = drills.map((item) => ({
     ...item,
     id: String(item.id),
     categoryId: String(item.categoryId),
+    isPremium: item.accessLevel === 'premium',
+    isLocked: item.accessLevel === 'premium',
   }));
+
+  return {
+    items,
+    pagination: buildPaginationMeta(page, limit, totalResult[0]?.total || 0),
+  };
 };
 
 const getById = async (id: string) => {
@@ -60,25 +107,40 @@ const getById = async (id: string) => {
   return {
     id: String(drill._id),
     name: drill.name,
+    drillName: drill.name,
     categoryId: String(drill.categoryId),
-    category: category?.name || 'Unknown',
+    category: category
+      ? {
+          id: String(category._id),
+          categoryName: category.name,
+          accessLevel: category.accessLevel,
+        }
+      : null,
+    categoryName: category?.name || 'Unknown',
     description: drill.description,
     cover: drill.cover,
+    coverPhoto: drill.cover,
+    coverPhotoUrl: drill.cover,
     accessLevel: drill.accessLevel,
+    isPremium: drill.accessLevel === 'premium',
+    isLocked: drill.accessLevel === 'premium',
     steps: drill.steps,
     equipment: drill.equipment,
     focusPoints: drill.focusPoints,
     createdAt: drill.createdAt,
+    updatedAt: drill.updatedAt,
   };
 };
 
 const save = async (
   id: string | undefined,
   payload: {
-    name: string;
+    name?: string;
+    drillName?: string;
     categoryId: string;
     description: string;
-    cover: string;
+    cover?: string;
+    coverPhoto?: string;
     accessLevel: 'free' | 'premium';
     steps?: string[];
     equipment?: string[];
@@ -91,7 +153,11 @@ const save = async (
   }
 
   const next = {
-    ...payload,
+    name: payload.name || payload.drillName,
+    categoryId: payload.categoryId,
+    description: payload.description,
+    cover: payload.cover || payload.coverPhoto,
+    accessLevel: payload.accessLevel,
     steps: payload.steps || [],
     equipment: payload.equipment || [],
     focusPoints: payload.focusPoints || [],

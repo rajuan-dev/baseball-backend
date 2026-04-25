@@ -8,11 +8,12 @@ import { drillService } from './drill.service';
 
 export const drillController = {
   getAll: catchAsync(async (req, res) => {
-    const result = await drillService.getAll(req.query.categoryId as string | undefined);
-    response.success(res, {
+    const result = await drillService.getAll(req.query);
+    response.paginated(res, {
       statusCode: StatusCodes.OK,
       message: 'Drills fetched successfully',
-      data: result,
+      data: result.items,
+      meta: { pagination: result.pagination },
     });
   }),
   getById: catchAsync(async (req, res) => {

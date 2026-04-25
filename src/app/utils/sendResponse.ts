@@ -18,11 +18,17 @@ const buildResponse = <T>(payload: {
   data?: T;
   meta?: ResponseMeta;
 }): ApiResponse<T> => {
+  const pagination =
+    payload.meta && typeof payload.meta === 'object' && 'pagination' in payload.meta
+      ? { pagination: payload.meta.pagination }
+      : {};
+
   return {
     success: true,
     message: payload.message,
     data: payload.data ?? null,
     meta: payload.meta ?? null,
+    ...pagination,
     timestamp: new Date().toISOString(),
   };
 };

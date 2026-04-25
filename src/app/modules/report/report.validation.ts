@@ -11,4 +11,9 @@ export const reportValidation = {
       message: z.string().min(10),
     }),
   }),
+  updateStatus: z.object({
+    body: z.object({
+      status: z.enum(['open', 'resolved', 'Open', 'Resolved']),
+    }),
+  }),
 };

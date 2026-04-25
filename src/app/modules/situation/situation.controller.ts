@@ -7,12 +7,13 @@ import { response } from '../../utils/sendResponse';
 import { situationService } from './situation.service';
 
 export const situationController = {
-  getAll: catchAsync(async (_req, res) => {
-    const result = await situationService.getAll();
-    response.success(res, {
+  getAll: catchAsync(async (req, res) => {
+    const result = await situationService.getAll(req.query);
+    response.paginated(res, {
       statusCode: StatusCodes.OK,
       message: 'Situations fetched successfully',
-      data: result,
+      data: result.items,
+      meta: { pagination: result.pagination },
     });
   }),
   getById: catchAsync(async (req, res) => {
@@ -36,6 +37,13 @@ export const situationController = {
       statusCode: StatusCodes.OK,
       message: 'Situation updated successfully',
       data: result,
+    });
+  }),
+  remove: catchAsync(async (req, res) => {
+    await situationService.remove(getSingleParam(req.params.id));
+    response.success(res, {
+      statusCode: StatusCodes.OK,
+      message: 'Situation deleted successfully',
     });
   }),
 };

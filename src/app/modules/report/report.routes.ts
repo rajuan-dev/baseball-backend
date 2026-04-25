@@ -11,3 +11,9 @@ export const reportRoutes = Router();
 reportRoutes.post('/', validateRequest(reportValidation.create), reportController.create);
 reportRoutes.get('/', requireAuth('admin'), reportController.getAll);
 reportRoutes.get('/:id', requireAuth('admin'), reportController.getById);
+reportRoutes.patch(
+  '/:id/status',
+  requireAuth('admin'),
+  validateRequest(reportValidation.updateStatus),
+  reportController.updateStatus,
+);

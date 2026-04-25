@@ -8,6 +8,7 @@ export interface IReport {
   title: string;
   status: 'Open' | 'Resolved';
   message: string;
+  resolvedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -26,6 +27,7 @@ const reportSchema = new Schema<IReport>(
       default: 'Open',
     },
     message: { type: String, required: true, trim: true },
+    resolvedAt: { type: Date, default: null },
   },
   {
     versionKey: false,

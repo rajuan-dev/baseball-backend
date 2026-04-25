@@ -7,12 +7,13 @@ import { response } from '../../utils/sendResponse';
 import { drillCategoryService } from './drill-category.service';
 
 export const drillCategoryController = {
-  getAll: catchAsync(async (_req, res) => {
-    const result = await drillCategoryService.getAll();
-    response.success(res, {
+  getAll: catchAsync(async (req, res) => {
+    const result = await drillCategoryService.getAll(req.query);
+    response.paginated(res, {
       statusCode: StatusCodes.OK,
       message: 'Drill categories fetched successfully',
-      data: result,
+      data: result.items,
+      meta: { pagination: result.pagination },
     });
   }),
   getById: catchAsync(async (req, res) => {

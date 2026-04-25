@@ -9,6 +9,7 @@ import { localUploadsRoot } from './app/config/paths';
 import { globalErrorHandler } from './app/middlewares/globalErrorHandler';
 import { notFoundHandler } from './app/middlewares/notFoundHandler';
 import { httpLogger, requestPayloadLogger } from './app/middlewares/requestLogger';
+import { adminAliasRoutes, appAliasRoutes } from './app/routes/alias.routes';
 import { router } from './app/routes';
 
 const app = express();
@@ -30,6 +31,8 @@ app.use(
 app.use(requestPayloadLogger as RequestHandler);
 
 app.use(env.API_PREFIX, router);
+app.use('/api/admin', adminAliasRoutes);
+app.use('/api/app', appAliasRoutes);
 
 app.use(notFoundHandler);
 app.use(globalErrorHandler);

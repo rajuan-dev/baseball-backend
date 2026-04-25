@@ -6,11 +6,23 @@ import { response } from '../../utils/sendResponse';
 import { paymentService } from './payment.service';
 
 export const paymentController = {
-  getAll: catchAsync(async (_req, res) => {
-    const result = await paymentService.getAll();
-    response.success(res, {
+  getAll: catchAsync(async (req, res) => {
+    const result = await paymentService.getAll(req.query);
+    response.paginated(res, {
       statusCode: StatusCodes.OK,
       message: 'Transactions fetched successfully',
+      data: {
+        fullUnlockPrice: result.fullUnlockPrice,
+        transactions: result.transactions,
+      },
+      meta: { pagination: result.pagination },
+    });
+  }),
+  getSummary: catchAsync(async (_req, res) => {
+    const result = await paymentService.getSummary();
+    response.success(res, {
+      statusCode: StatusCodes.OK,
+      message: 'Earnings summary fetched successfully',
       data: result,
     });
   }),

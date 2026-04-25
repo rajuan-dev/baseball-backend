@@ -2,9 +2,15 @@ import { z } from 'zod';
 
 export const settingsValidation = {
   updateContent: z.object({
-    body: z.object({
-      value: z.string().min(1),
-    }),
+    body: z
+      .object({
+        value: z.string().min(1).optional(),
+        content: z.string().min(1).optional(),
+      })
+      .refine((data) => data.value || data.content, {
+        message: 'Content is required',
+        path: ['value'],
+      }),
   }),
   updateAppSettings: z.object({
     body: z.object({

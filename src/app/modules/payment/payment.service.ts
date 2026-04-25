@@ -1,20 +1,74 @@
 import { transactionModel } from './payment.model';
 import { settingsService } from '../settings/settings.service';
 import { appUserModel } from '../auth/app-user.model';
+import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 
-const getAll = async () => {
+const mapTransaction = (item: Record<string, unknown>) => ({
+  id: String(item._id),
+  userEmail: item.userEmail,
+  fullName: item.userEmail,
+  purchaseType: item.purchaseType,
+  subscriptionStatus: item.status || 'paid',
+  status: item.status || 'paid',
+  amount: item.amount,
+  paymentDate: item.createdAt,
+  date: item.createdAt,
+  paymentMethod: item.paymentMethod || 'manual',
+  source: item.paymentMethod || 'manual',
+});
+
+const getAll = async (query: {
+  page?: unknown;
+  limit?: unknown;
+  status?: unknown;
+  search?: unknown;
+} = {}) => {
+  const { page, limit, skip } = getPagination(query);
   const price = await settingsService.getUnlockPrice();
-  const transactions = await transactionModel.find().sort({ createdAt: -1 }).lean();
+  const filter: Record<string, unknown> = {};
+  const status = typeof query.status === 'string' ? query.status.toLowerCase() : '';
+  const search = typeof query.search === 'string' ? query.search.trim() : '';
+
+  if (status && status !== 'all') filter.status = status;
+  if (search) {
+    filter.$or = [
+      { userEmail: { $regex: search, $options: 'i' } },
+      { purchaseType: { $regex: search, $options: 'i' } },
+      { paymentMethod: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const [transactions, total] = await Promise.all([
+    transactionModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    transactionModel.countDocuments(filter),
+  ]);
 
   return {
     fullUnlockPrice: price,
-    transactions: transactions.map((item) => ({
-      id: String(item._id),
-      userEmail: item.userEmail,
-      purchaseType: item.purchaseType,
-      amount: item.amount,
-      date: item.createdAt,
-    })),
+    transactions: transactions.map((item) => mapTransaction(item as unknown as Record<string, unknown>)),
+    pagination: buildPaginationMeta(page, limit, total),
+  };
+};
+
+const getSummary = async () => {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const [totalPurchases, revenueAgg, monthlyRevenueAgg] = await Promise.all([
+    transactionModel.countDocuments({ status: { $ne: 'failed' } }),
+    transactionModel.aggregate([
+      { $match: { status: { $ne: 'failed' } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]),
+    transactionModel.aggregate([
+      { $match: { status: { $ne: 'failed' }, createdAt: { $gte: monthStart } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]),
+  ]);
+
+  return {
+    totalPurchases,
+    totalRevenue: revenueAgg[0]?.total || 0,
+    monthlyRevenue: monthlyRevenueAgg[0]?.total || 0,
   };
 };
 
@@ -41,6 +95,8 @@ const completePurchase = async (payload: {
     purchaseType: payload.purchaseType || 'Unlock All Drills',
     amount: price,
     country: payload.country,
+    status: 'paid',
+    paymentMethod: 'manual',
   });
 
   return {
@@ -56,6 +112,7 @@ const updatePrice = async (price: number) => {
 
 export const paymentService = {
   getAll,
+  getSummary,
   completePurchase,
   updatePrice,
 };

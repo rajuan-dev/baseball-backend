@@ -22,3 +22,4 @@ situationRoutes.patch(
   validateRequest(situationValidation.save),
   situationController.update,
 );
+situationRoutes.delete('/:id', requireAuth('admin'), situationController.remove);

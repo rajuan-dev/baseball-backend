@@ -9,6 +9,7 @@ import { paymentValidation } from './payment.validation';
 export const paymentRoutes = Router();
 
 paymentRoutes.get('/transactions', requireAuth('admin'), paymentController.getAll);
+paymentRoutes.get('/summary', requireAuth('admin'), paymentController.getSummary);
 paymentRoutes.post(
   '/complete',
   validateRequest(paymentValidation.completePurchase),

@@ -7,12 +7,13 @@ import { response } from '../../utils/sendResponse';
 import { reportService } from './report.service';
 
 export const reportController = {
-  getAll: catchAsync(async (_req, res) => {
-    const result = await reportService.getAll();
-    response.success(res, {
+  getAll: catchAsync(async (req, res) => {
+    const result = await reportService.getAll(req.query);
+    response.paginated(res, {
       statusCode: StatusCodes.OK,
       message: 'Reports fetched successfully',
-      data: result,
+      data: result.items,
+      meta: { pagination: result.pagination },
     });
   }),
   getById: catchAsync(async (req, res) => {
@@ -27,6 +28,15 @@ export const reportController = {
     const result = await reportService.create(req.body);
     response.created(res, {
       message: 'Support report submitted successfully',
+      data: result,
+    });
+  }),
+  updateStatus: catchAsync(async (req, res) => {
+    const normalized = req.body.status.toLowerCase() === 'resolved' ? 'Resolved' : 'Open';
+    const result = await reportService.updateStatus(getSingleParam(req.params.id), normalized);
+    response.success(res, {
+      statusCode: StatusCodes.OK,
+      message: 'Report status updated successfully',
       data: result,
     });
   }),
