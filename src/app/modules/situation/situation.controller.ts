@@ -16,6 +16,14 @@ export const situationController = {
       meta: { pagination: result.pagination },
     });
   }),
+  getFeatured: catchAsync(async (_req, res) => {
+    const result = await situationService.getFeatured();
+    response.success(res, {
+      statusCode: StatusCodes.OK,
+      message: 'Featured situations fetched successfully',
+      data: result,
+    });
+  }),
   getById: catchAsync(async (req, res) => {
     const result = await situationService.getById(getSingleParam(req.params.id));
     response.success(res, {

@@ -11,7 +11,7 @@ export const situationValidation = {
       title: z.string().min(2),
       category: z.string().min(1).default('Specific Situations').optional(),
       shortLabel: z.string().min(1).default('SS').optional(),
-      image: z.string().min(1),
+      image: z.string().optional(),
       displayOrder: z.number().min(0),
       featured: z.boolean().optional(),
       isFeatured: z.boolean().optional(),

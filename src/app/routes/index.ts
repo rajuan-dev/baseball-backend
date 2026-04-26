@@ -10,12 +10,14 @@ import { notificationRoutes } from '../modules/notification/notification.routes'
 import { paymentRoutes } from '../modules/payment/payment.routes';
 import { reportRoutes } from '../modules/report/report.routes';
 import { settingsRoutes } from '../modules/settings/settings.routes';
+import { situationController } from '../modules/situation/situation.controller';
 import { situationRoutes } from '../modules/situation/situation.routes';
 import { uploadRoutes } from '../modules/upload/upload.routes';
 
 export const router = Router();
 
 router.use('/health', healthRoutes);
+router.get('/featured-situations', situationController.getFeatured);
 router.use('/auth', authRoutes);
 router.use('/admins', adminRoutes);
 router.use('/settings', settingsRoutes);

@@ -62,7 +62,23 @@ const getFeatured = async () => {
     .sort({ displayOrder: 1, createdAt: -1 })
     .lean();
 
-  return situations.map((item) => mapSituation(item as unknown as Record<string, unknown>));
+  return situations.map((item) => {
+    const mapped = mapSituation(item as unknown as Record<string, unknown>);
+
+    return {
+      id: mapped.id,
+      title: mapped.title,
+      category: mapped.category,
+      shortLabel: mapped.shortLabel,
+      image: mapped.image,
+      imageUrl: mapped.imageUrl,
+      diagramVariant: mapped.diagramVariant,
+      details: mapped.instructions,
+      instructions: mapped.instructions,
+      featured: mapped.featured,
+      displayOrder: mapped.displayOrder,
+    };
+  });
 };
 
 const getById = async (id: string) => {
@@ -80,7 +96,7 @@ const save = async (
     title: string;
     category?: string;
     shortLabel?: string;
-    image: string;
+    image?: string;
     displayOrder: number;
     featured?: boolean;
     isFeatured?: boolean;
@@ -92,7 +108,7 @@ const save = async (
     title: payload.title,
     category: payload.category || 'Specific Situations',
     shortLabel: payload.shortLabel || payload.title.slice(0, 2).toUpperCase(),
-    image: payload.image,
+    image: payload.image ?? '',
     displayOrder: payload.displayOrder,
     featured: payload.featured ?? payload.isFeatured ?? false,
     diagramVariant: payload.diagramVariant || 'infield',

@@ -11,6 +11,24 @@ import { bootstrapService } from './app/services/bootstrap.service';
 
 const server = http.createServer(app);
 
+server.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EADDRINUSE') {
+    logger.error('Server port is already in use', {
+      host: env.HOST,
+      port: env.PORT,
+      hint: `Stop the existing backend process on port ${env.PORT}, or set a different PORT in .env.`,
+    });
+    void mongoose.connection.close().finally(() => process.exit(1));
+    return;
+  }
+
+  logger.error('HTTP server error', {
+    error: error.message,
+    stack: error.stack,
+  });
+  void mongoose.connection.close().finally(() => process.exit(1));
+});
+
 const bootstrap = async (): Promise<void> => {
   await connectDatabase();
   await adminService.seedDefaultAdmin();
