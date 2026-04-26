@@ -5,6 +5,7 @@
   "description": "Production-ready modular Node.js backend with Express, TypeScript, MongoDB, S3, and Resend integration placeholders.",
   "main": "dist/server.js",
   "scripts": {
+    "predev": "node scripts/free-dev-port.mjs",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",

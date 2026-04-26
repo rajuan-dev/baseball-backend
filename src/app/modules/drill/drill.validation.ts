@@ -1,5 +1,20 @@
 import { z } from 'zod';
 
+const focusPointSchema = z.union([
+  z.string().min(1).transform((value) => {
+    const [title = '', ...rest] = value.split(':');
+
+    return {
+      title: title.trim(),
+      description: rest.join(':').trim(),
+    };
+  }),
+  z.object({
+    title: z.string().min(1),
+    description: z.string().min(1),
+  }),
+]);
+
 export const drillValidation = {
   save: z.object({
     body: z.object({
@@ -9,12 +24,13 @@ export const drillValidation = {
       description: z.string().min(10),
       cover: z.string().min(1).optional(),
       coverPhoto: z.string().min(1).optional(),
+      listIcon: z.string().min(1).default('baseball-outline').optional(),
       accessLevel: z.enum(['free', 'premium', 'Free', 'Premium']).transform((value) =>
         value.toLowerCase() as 'free' | 'premium',
       ),
-      steps: z.array(z.string().min(1)).default([]).optional(),
-      equipment: z.array(z.string().min(1)).default([]).optional(),
-      focusPoints: z.array(z.string().min(1)).default([]).optional(),
+      steps: z.array(z.string().min(1)).min(1, 'At least one step direction is required'),
+      equipment: z.array(z.string().min(1)).min(1, 'At least one equipment item is required'),
+      focusPoints: z.array(focusPointSchema).min(1, 'At least one focus point is required'),
     }).refine((data) => data.name || data.drillName, {
       message: 'Drill name is required',
       path: ['name'],

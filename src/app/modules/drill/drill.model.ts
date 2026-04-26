@@ -10,6 +10,7 @@ const drillSchema = new Schema(
     },
     description: { type: String, required: true, trim: true },
     cover: { type: String, required: true, trim: true },
+    listIcon: { type: String, default: 'baseball-outline', trim: true },
     accessLevel: {
       type: String,
       required: true,
@@ -24,7 +25,7 @@ const drillSchema = new Schema(
       default: [],
     },
     focusPoints: {
-      type: [String],
+      type: [Schema.Types.Mixed],
       default: [],
     },
   },

@@ -58,6 +58,7 @@ const getAll = async (query: {
         categoryId: 1,
         description: 1,
         cover: 1,
+        listIcon: 1,
         accessLevel: 1,
         coverPhoto: '$cover',
         coverPhotoUrl: '$cover',
@@ -85,18 +86,21 @@ const getAll = async (query: {
 
   const items = drills.map((item) => {
     const coverUrl = buildPublicFileUrl(item.cover);
+    const focusPoints = normalizeFocusPoints(item.focusPoints);
 
     return {
       ...item,
       id: String(item.id),
       categoryId: String(item.categoryId),
       cover: coverUrl,
+      listIcon: item.listIcon || 'baseball-outline',
       coverUrl,
       coverPhoto: coverUrl,
       coverPhotoUrl: coverUrl,
       imageUrl: coverUrl,
       isPremium: item.accessLevel === 'premium',
       isLocked: item.accessLevel === 'premium',
+      focusPoints,
     };
   });
 
@@ -105,6 +109,26 @@ const getAll = async (query: {
     pagination: buildPaginationMeta(page, limit, totalResult[0]?.total || 0),
   };
 };
+
+const normalizeFocusPoints = (items?: Array<string | { title?: string; description?: string }>) =>
+  (items || [])
+    .map((item) => {
+      if (typeof item === 'string') {
+        const [title = '', ...rest] = item.split(':');
+
+        return {
+          title: title.trim(),
+          description: rest.join(':').trim(),
+        };
+      }
+
+      return {
+        title: (item.title || '').trim(),
+        description: (item.description || '').trim(),
+      };
+    })
+    .filter((item) => item.title || item.description);
+
 
 const getById = async (id: string) => {
   const drill = await drillModel.findById(id).lean();
@@ -130,6 +154,7 @@ const getById = async (id: string) => {
     categoryName: category?.name || 'Unknown',
     description: drill.description,
     cover: coverUrl,
+    listIcon: drill.listIcon || 'baseball-outline',
     coverUrl,
     coverPhoto: coverUrl,
     coverPhotoUrl: coverUrl,
@@ -139,7 +164,7 @@ const getById = async (id: string) => {
     isLocked: drill.accessLevel === 'premium',
     steps: drill.steps,
     equipment: drill.equipment,
-    focusPoints: drill.focusPoints,
+    focusPoints: normalizeFocusPoints(drill.focusPoints),
     createdAt: drill.createdAt,
     updatedAt: drill.updatedAt,
   };
@@ -154,10 +179,11 @@ const save = async (
     description: string;
     cover?: string;
     coverPhoto?: string;
+    listIcon?: string;
     accessLevel: 'free' | 'premium';
     steps?: string[];
     equipment?: string[];
-    focusPoints?: string[];
+    focusPoints?: Array<string | { title?: string; description?: string }>;
   },
 ) => {
   const category = await drillCategoryModel.findById(payload.categoryId).lean();
@@ -170,10 +196,11 @@ const save = async (
     categoryId: payload.categoryId,
     description: payload.description,
     cover: payload.cover || payload.coverPhoto,
+    listIcon: payload.listIcon || 'baseball-outline',
     accessLevel: payload.accessLevel,
     steps: payload.steps || [],
     equipment: payload.equipment || [],
-    focusPoints: payload.focusPoints || [],
+    focusPoints: normalizeFocusPoints(payload.focusPoints),
   };
 
   const drill = id
