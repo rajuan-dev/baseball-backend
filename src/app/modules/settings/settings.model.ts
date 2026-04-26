@@ -13,6 +13,8 @@ export interface ISettings {
   aboutUs: string;
   fullUnlockPrice: number;
   appVersion: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const settingsSchema = new Schema<ISettings>(

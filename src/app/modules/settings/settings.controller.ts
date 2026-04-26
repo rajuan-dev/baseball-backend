@@ -31,10 +31,11 @@ export const settingsController = {
     });
   }),
   updateContentSection: catchAsync(async (req, res) => {
-    await settingsService.updateContentSection(req.params.section as 'privacyPolicy' | 'terms' | 'aboutUs', req.body.value);
+    const result = await settingsService.updateContentSection(String(req.params.section), req.body.value ?? req.body.content);
     response.success(res, {
       statusCode: StatusCodes.OK,
       message: 'Content updated successfully',
+      data: result,
     });
   }),
   updateAppSettings: catchAsync(async (req, res) => {

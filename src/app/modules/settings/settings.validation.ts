@@ -4,10 +4,10 @@ export const settingsValidation = {
   updateContent: z.object({
     body: z
       .object({
-        value: z.string().min(1).optional(),
-        content: z.string().min(1).optional(),
+        value: z.string().optional(),
+        content: z.string().optional(),
       })
-      .refine((data) => data.value || data.content, {
+      .refine((data) => typeof data.value === 'string' || typeof data.content === 'string', {
         message: 'Content is required',
         path: ['value'],
       }),
