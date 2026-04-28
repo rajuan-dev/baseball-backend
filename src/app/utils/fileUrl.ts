@@ -4,8 +4,8 @@ const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const trimLeadingSlash = (value: string) => value.replace(/^\/+/, '');
 
 const getUploadsBaseUrl = (): string => {
-  if (env.LOCAL_FILE_BASE_URL) {
-    return trimTrailingSlash(env.LOCAL_FILE_BASE_URL);
+  if (env.PUBLIC_UPLOAD_URL) {
+    return trimTrailingSlash(env.PUBLIC_UPLOAD_URL);
   }
 
   if (env.APP_BASE_URL) {
@@ -13,7 +13,7 @@ const getUploadsBaseUrl = (): string => {
   }
 
   if (env.NODE_ENV === 'production') {
-    throw new Error('LOCAL_FILE_BASE_URL or APP_BASE_URL is required to build public file URLs in production');
+    throw new Error('PUBLIC_UPLOAD_URL or BASE_URL is required to build public file URLs in production');
   }
 
   return `http://127.0.0.1:${env.PORT}${env.LOCAL_UPLOADS_BASE_PATH.replace(/\/+$/, '')}`;

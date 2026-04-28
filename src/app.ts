@@ -24,7 +24,14 @@ app.use(
 );
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin || env.CORS_ORIGINS.includes('*') || env.CORS_ORIGINS.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin ${origin} is not allowed by CORS_ORIGINS`));
+    },
     credentials: true,
   }),
 );

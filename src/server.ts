@@ -39,9 +39,7 @@ const bootstrap = async (): Promise<void> => {
       host: env.HOST,
       port: env.PORT,
       env: env.NODE_ENV,
-      baseUrl: env.APP_BASE_URL
-        ? `${env.APP_BASE_URL.replace(/\/$/, '')}${env.API_PREFIX}`
-        : env.API_PREFIX,
+      baseUrl: env.API_BASE_URL ?? env.API_PREFIX,
       storageProvider: env.STORAGE_PROVIDER,
       uploadMode: env.UPLOAD_MODE,
     });
