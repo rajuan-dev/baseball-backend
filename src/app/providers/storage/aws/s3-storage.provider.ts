@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { env } from '../../../config/env';
@@ -9,7 +9,7 @@ import {
   UploadDescriptor,
   UploadTargetResult,
 } from '../interfaces/storage-provider.interface';
-import { buildStorageKey } from '../utils/file';
+import { buildStorageKey, extractS3Key, getS3PublicBaseUrl } from '../utils/file';
 
 const s3Client = new S3Client({
   region: env.AWS_REGION,
@@ -23,11 +23,7 @@ const s3Client = new S3Client({
 });
 
 const getPublicUrl = (key: string): string => {
-  const baseUrl =
-    env.AWS_S3_PUBLIC_BASE_URL ||
-    `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com`;
-
-  return `${baseUrl.replace(/\/$/, '')}/${key}`;
+  return `${getS3PublicBaseUrl()}/${key}`;
 };
 
 export class S3StorageProvider implements StorageProvider {
@@ -60,6 +56,18 @@ export class S3StorageProvider implements StorageProvider {
       key,
       fileUrl: getPublicUrl(key),
     };
+  }
+
+  async deleteFile(keyOrUrl: string): Promise<void> {
+    const key = extractS3Key(keyOrUrl);
+    if (!key) return;
+
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: env.AWS_S3_BUCKET,
+        Key: key,
+      }),
+    );
   }
 
   async createUploadTarget(input: UploadDescriptor): Promise<UploadTargetResult> {

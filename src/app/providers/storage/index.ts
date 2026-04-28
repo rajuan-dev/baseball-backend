@@ -2,7 +2,8 @@ import { env } from '../../config/env';
 
 import { S3StorageProvider } from './aws/s3-storage.provider';
 import { StorageProvider } from './interfaces/storage-provider.interface';
-import { LocalStorageProvider } from './local/local-storage.provider';
+// LocalStorageProvider is intentionally disabled so uploads cannot fall back to disk.
+// import { LocalStorageProvider } from './local/local-storage.provider';
 
 let storageProvider: StorageProvider | null = null;
 
@@ -11,10 +12,11 @@ export const getStorageProvider = (): StorageProvider => {
     return storageProvider;
   }
 
-  storageProvider =
-    env.STORAGE_PROVIDER === 's3'
-      ? new S3StorageProvider()
-      : new LocalStorageProvider();
+  if (env.STORAGE_PROVIDER !== 's3') {
+    throw new Error('Local upload storage is disabled. Configure STORAGE_PROVIDER=s3 and UPLOAD_DRIVER=s3.');
+  }
+
+  storageProvider = new S3StorageProvider();
 
   return storageProvider;
 };

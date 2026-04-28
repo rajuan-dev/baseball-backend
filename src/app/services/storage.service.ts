@@ -45,6 +45,35 @@ const createUploadTarget = async (input: UploadDescriptor): Promise<UploadTarget
   return result;
 };
 
+const deleteFile = async (keyOrUrl?: string | null): Promise<void> => {
+  if (!keyOrUrl?.trim()) return;
+
+  await storageProvider.deleteFile(keyOrUrl);
+
+  logger.info('File delete requested', {
+    provider: storageProvider.providerName,
+    keyOrUrl,
+  });
+};
+
+const deleteFileIfChanged = async (
+  previousKeyOrUrl?: string | null,
+  nextKeyOrUrl?: string | null,
+): Promise<void> => {
+  if (!previousKeyOrUrl?.trim()) return;
+  if (previousKeyOrUrl === nextKeyOrUrl) return;
+
+  try {
+    await deleteFile(previousKeyOrUrl);
+  } catch (error) {
+    logger.warn('Stored file cleanup failed', {
+      provider: storageProvider.providerName,
+      keyOrUrl: previousKeyOrUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
 const getProviderSummary = () => ({
   provider: storageProvider.providerName,
   supportsPresignedUploads: storageProvider.supportsPresignedUploads,
@@ -54,4 +83,6 @@ export const storageService = {
   getProviderSummary,
   storeFile,
   createUploadTarget,
+  deleteFile,
+  deleteFileIfChanged,
 };

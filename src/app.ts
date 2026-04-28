@@ -2,10 +2,11 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import type { RequestHandler } from 'express';
-import path from 'node:path';
+// Local upload static serving is intentionally disabled while S3 is the only active provider.
+// import path from 'node:path';
 
 import { env } from './app/config/env';
-import { localUploadsRoot } from './app/config/paths';
+// import { localUploadsRoot } from './app/config/paths';
 import { globalErrorHandler } from './app/middlewares/globalErrorHandler';
 import { notFoundHandler } from './app/middlewares/notFoundHandler';
 import { httpLogger, requestPayloadLogger } from './app/middlewares/requestLogger';
@@ -35,14 +36,17 @@ app.use(
     credentials: true,
   }),
 );
-app.use(
-  env.LOCAL_UPLOADS_BASE_PATH,
-  express.static(path.resolve(localUploadsRoot), {
-    etag: true,
-    immutable: true,
-    maxAge: '30d',
-  }) as RequestHandler,
-);
+// Local disk upload serving is disabled. Uploaded media must be served by S3/CDN.
+// if (env.STORAGE_PROVIDER === 'local') {
+//   app.use(
+//     env.LOCAL_UPLOADS_BASE_PATH,
+//     express.static(path.resolve(localUploadsRoot), {
+//       etag: true,
+//       immutable: true,
+//       maxAge: '30d',
+//     }) as RequestHandler,
+//   );
+// }
 app.use(requestPayloadLogger as RequestHandler);
 
 app.use(env.API_PREFIX, router);

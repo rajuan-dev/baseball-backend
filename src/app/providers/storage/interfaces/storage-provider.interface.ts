@@ -20,5 +20,6 @@ export interface StorageProvider {
   readonly providerName: 'local' | 's3';
   readonly supportsPresignedUploads: boolean;
   storeFile(input: UploadDescriptor & { buffer: Buffer }): Promise<StoredFileResult>;
+  deleteFile(keyOrUrl: string): Promise<void>;
   createUploadTarget?(input: UploadDescriptor): Promise<UploadTargetResult>;
 }

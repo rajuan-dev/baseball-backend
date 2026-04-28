@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { getS3PublicBaseUrl } from '../providers/storage/utils/file';
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const trimLeadingSlash = (value: string) => value.replace(/^\/+/, '');
@@ -32,7 +33,6 @@ export const buildPublicFileUrl = (value?: string | null): string => {
     return filePath;
   }
 
-  const uploadsBaseUrl = getUploadsBaseUrl();
   const uploadsBasePath = env.LOCAL_UPLOADS_BASE_PATH.replace(/^\/?/, '/').replace(/\/+$/, '');
 
   if (filePath.startsWith(uploadsBasePath)) {
@@ -43,12 +43,17 @@ export const buildPublicFileUrl = (value?: string | null): string => {
   const uploadsPrefix = trimLeadingSlash(uploadsBasePath);
 
   if (normalizedPath === uploadsPrefix) {
-    return uploadsBaseUrl;
+    return getUploadsBaseUrl();
   }
 
   if (normalizedPath.startsWith(`${uploadsPrefix}/`)) {
     return `${getUploadsOrigin()}/${normalizedPath}`;
   }
 
+  if (env.STORAGE_PROVIDER === 's3') {
+    return `${getS3PublicBaseUrl()}/${normalizedPath}`;
+  }
+
+  const uploadsBaseUrl = getUploadsBaseUrl();
   return `${uploadsBaseUrl}/${normalizedPath}`;
 };

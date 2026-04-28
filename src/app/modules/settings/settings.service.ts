@@ -2,6 +2,7 @@ import { StatusCodes } from 'http-status-codes';
 import sanitizeHtml from 'sanitize-html';
 
 import { ApiError } from '../../errors/ApiError';
+import { storageService } from '../../services/storage.service';
 import { buildPublicFileUrl } from '../../utils/fileUrl';
 
 import { settingsModel } from './settings.model';
@@ -134,7 +135,16 @@ const updateAppSettings = async (
     situationImageUri: string | null;
   }>,
 ) => {
+  const previousSettings = Object.prototype.hasOwnProperty.call(payload, 'situationImageUri')
+    ? await settingsModel.findOne().lean()
+    : null;
+
   await settingsModel.updateOne({}, payload, { upsert: true });
+  await storageService.deleteFileIfChanged(
+    previousSettings?.situationImageUri,
+    payload.situationImageUri,
+  );
+
   return getPublicAppSettings();
 };
 

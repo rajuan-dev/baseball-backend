@@ -1,7 +1,6 @@
 import { ApiError } from '../../errors/ApiError';
 import { env } from '../../config/env';
 import { storageService } from '../../services/storage.service';
-import { buildPublicFileUrl } from '../../utils/fileUrl';
 
 const createPresignedUpload = async (payload: {
   fileName: string;
@@ -30,18 +29,15 @@ const uploadFile = async (payload: {
 
 const getProviderStatus = async () => {
   const appBaseUrl = env.APP_BASE_URL?.replace(/\/$/, '') ?? null;
-  const localUploadsBasePath =
-    env.STORAGE_PROVIDER === 'local' ? env.LOCAL_UPLOADS_BASE_PATH : null;
+  // Local uploads are disabled; provider status should not advertise disk-backed media.
+  const localUploadsBasePath = null;
 
   return {
     ...storageService.getProviderSummary(),
     activeMode: env.UPLOAD_MODE,
     appBaseUrl,
     localUploadsBasePath,
-    localFileBaseUrl:
-      env.STORAGE_PROVIDER === 'local'
-        ? buildPublicFileUrl(env.LOCAL_UPLOADS_BASE_PATH)
-        : null,
+    localFileBaseUrl: null,
     maxUploadFileSizeMb: env.MAX_UPLOAD_FILE_SIZE_MB,
   };
 };

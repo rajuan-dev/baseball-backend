@@ -4,6 +4,7 @@ import { StatusCodes } from 'http-status-codes';
 import { ApiError } from '../../errors/ApiError';
 import { env } from '../../config/env';
 import { logger } from '../../logger';
+import { storageService } from '../../services/storage.service';
 import { buildPublicFileUrl } from '../../utils/fileUrl';
 
 import { Admin } from './admin.model';
@@ -109,6 +110,7 @@ const updateProfile = async (
     throw new ApiError(StatusCodes.CONFLICT, 'Another admin already uses this email');
   }
 
+  const previousAdmin = await Admin.findById(adminId).lean();
   const admin = await Admin.findByIdAndUpdate(
     adminId,
     {
@@ -121,6 +123,8 @@ const updateProfile = async (
   if (!admin) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Admin profile not found');
   }
+
+  await storageService.deleteFileIfChanged(previousAdmin?.image, admin.image);
 
   return {
     id: String(admin._id),

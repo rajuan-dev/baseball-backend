@@ -2,6 +2,7 @@ import mongoose, { PipelineStage } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
+import { storageService } from '../../services/storage.service';
 import { buildPublicFileUrl } from '../../utils/fileUrl';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 import { drillCategoryModel } from '../drill-category/drill-category.model';
@@ -203,6 +204,7 @@ const save = async (
     focusPoints: normalizeFocusPoints(payload.focusPoints),
   };
 
+  const previousDrill = id ? await drillModel.findById(id).lean() : null;
   const drill = id
     ? await drillModel.findByIdAndUpdate(id, next, { new: true, runValidators: true }).lean()
     : await drillModel.create(next).then((doc) => doc.toObject());
@@ -210,6 +212,8 @@ const save = async (
   if (!drill) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Drill not found');
   }
+
+  await storageService.deleteFileIfChanged(previousDrill?.cover, drill.cover);
 
   return getById(String(drill._id));
 };
@@ -219,6 +223,8 @@ const remove = async (id: string) => {
   if (!deleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Drill not found');
   }
+
+  await storageService.deleteFileIfChanged(deleted.cover, null);
 };
 
 export const drillService = {

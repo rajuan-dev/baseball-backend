@@ -1,6 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
+import { storageService } from '../../services/storage.service';
 import { buildPublicFileUrl } from '../../utils/fileUrl';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 
@@ -115,6 +116,7 @@ const save = async (
     instructions: payload.instructions || [],
   };
 
+  const previousSituation = id ? await situationModel.findById(id).lean() : null;
   const situation = id
     ? await situationModel.findByIdAndUpdate(id, next, { new: true, runValidators: true }).lean()
     : await situationModel.create(next).then((doc) => doc.toObject());
@@ -122,6 +124,8 @@ const save = async (
   if (!situation) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Situation not found');
   }
+
+  await storageService.deleteFileIfChanged(previousSituation?.image, situation.image);
 
   return mapSituation(situation as unknown as Record<string, unknown>);
 };
@@ -131,6 +135,8 @@ const remove = async (id: string) => {
   if (!deleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Situation not found');
   }
+
+  await storageService.deleteFileIfChanged(deleted.image, null);
 };
 
 export const situationService = {

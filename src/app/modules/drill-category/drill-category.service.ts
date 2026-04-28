@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import { ApiError } from '../../errors/ApiError';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 import { buildPublicFileUrl } from '../../utils/fileUrl';
+import { storageService } from '../../services/storage.service';
 import { drillModel } from '../drill/drill.model';
 
 import { drillCategoryModel } from './drill-category.model';
@@ -115,6 +116,7 @@ const save = async (
     accentIcon: payload.accentIcon || 'baseball-outline',
   };
 
+  const previousCategory = id ? await drillCategoryModel.findById(id).lean() : null;
   const category = id
     ? await drillCategoryModel.findByIdAndUpdate(id, next, { new: true, runValidators: true }).lean()
     : await drillCategoryModel.create(next).then((doc) => doc.toObject());
@@ -122,6 +124,11 @@ const save = async (
   if (!category) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Drill category not found');
   }
+
+  await Promise.all([
+    storageService.deleteFileIfChanged(previousCategory?.cover, category.cover),
+    storageService.deleteFileIfChanged(previousCategory?.icon, category.icon),
+  ]);
 
   return mapCategory(category as unknown as Record<string, unknown>);
 };
@@ -136,6 +143,11 @@ const remove = async (id: string) => {
   if (!deleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Drill category not found');
   }
+
+  await Promise.all([
+    storageService.deleteFileIfChanged(deleted.cover, null),
+    storageService.deleteFileIfChanged(deleted.icon, null),
+  ]);
 };
 
 export const drillCategoryService = {

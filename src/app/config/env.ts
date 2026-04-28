@@ -9,11 +9,21 @@ const emptyStringToUndefined = <TSchema extends z.ZodTypeAny>(schema: TSchema) =
       return undefined;
     }
 
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+
     return value;
   }, schema);
 
-const uploadDriverSchema = z.enum(['local', 's3']).default('local');
-const uploadModeSchema = z.enum(['server', 'presigned']).default('server');
+const uploadDriverSchema = z.literal('s3').default('s3');
+const uploadModeSchema = z.preprocess((value) => {
+  if (value === 's3') {
+    return 'server';
+  }
+
+  return value;
+}, z.enum(['server', 'presigned']).default('server'));
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const normalizeBasePath = (value: string) => `/${value.replace(/^\/+|\/+$/g, '')}`;
@@ -41,8 +51,9 @@ const normalizedEnv = (() => {
       (normalizedBaseUrl ? `${normalizedBaseUrl}${apiPrefix}` : undefined),
     UPLOAD_DRIVER: process.env.UPLOAD_DRIVER || process.env.STORAGE_PROVIDER,
     STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || process.env.UPLOAD_DRIVER,
-    UPLOAD_DIR: process.env.UPLOAD_DIR || process.env.LOCAL_UPLOADS_DIR,
-    LOCAL_UPLOADS_DIR: process.env.LOCAL_UPLOADS_DIR || process.env.UPLOAD_DIR,
+    // Local upload env aliases are intentionally ignored while S3 is the only active provider.
+    // UPLOAD_DIR: process.env.UPLOAD_DIR || process.env.LOCAL_UPLOADS_DIR,
+    // LOCAL_UPLOADS_DIR: process.env.LOCAL_UPLOADS_DIR || process.env.UPLOAD_DIR,
     LOCAL_UPLOADS_BASE_PATH: uploadsBasePath,
     PUBLIC_UPLOAD_URL:
       process.env.PUBLIC_UPLOAD_URL ||
@@ -88,6 +99,7 @@ const envSchema = z
     STORAGE_PROVIDER: uploadDriverSchema,
     UPLOAD_MODE: uploadModeSchema,
     UPLOAD_DRIVER: uploadDriverSchema,
+    // Local disk upload config is disabled. Keep the schema fields only so old env files do not break parsing.
     UPLOAD_DIR: z.string().default('storage/uploads'),
     LOCAL_UPLOADS_DIR: z.string().default('storage/uploads'),
     LOCAL_UPLOADS_BASE_PATH: z.string().default('/uploads'),
@@ -110,6 +122,14 @@ const envSchema = z
     RESEND_FROM_EMAIL: z.email('RESEND_FROM_EMAIL must be a valid email'),
   })
   .superRefine((value, ctx) => {
+    if (value.STORAGE_PROVIDER !== value.UPLOAD_DRIVER) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['UPLOAD_DRIVER'],
+        message: 'UPLOAD_DRIVER must match STORAGE_PROVIDER',
+      });
+    }
+
     if (value.UPLOAD_MODE === 'presigned' && value.STORAGE_PROVIDER !== 's3') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
