@@ -49,6 +49,20 @@ app.use(
 // }
 app.use(requestPayloadLogger as RequestHandler);
 
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Baseball backend is running',
+    data: {
+      environment: env.NODE_ENV,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      apiBasePath: env.API_PREFIX,
+      healthUrl: `${env.API_PREFIX}/health`,
+    },
+  });
+});
+
 app.use(env.API_PREFIX, router);
 app.use('/api/admin', adminAliasRoutes);
 app.use('/api/app', appAliasRoutes);
