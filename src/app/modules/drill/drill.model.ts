@@ -10,6 +10,7 @@ const drillSchema = new Schema(
     },
     description: { type: String, required: true, trim: true },
     cover: { type: String, required: true, trim: true },
+    youtubeUrl: { type: String, default: null, trim: true },
     listIcon: { type: String, default: 'baseball-outline', trim: true },
     accessLevel: {
       type: String,

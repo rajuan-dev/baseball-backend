@@ -1,5 +1,20 @@
 import { z } from 'zod';
 
+import { extractYouTubeVideoId, normalizeYouTubeUrl } from './drill.youtube';
+
+const youtubeUrlSchema = z.preprocess(
+  normalizeYouTubeUrl,
+  z
+    .string()
+    .url('Please enter a valid YouTube URL.')
+    .refine((value) => {
+      const videoId = extractYouTubeVideoId(value);
+      return Boolean(videoId);
+    }, 'Please enter a valid YouTube URL.')
+    .nullable()
+    .optional(),
+);
+
 const focusPointSchema = z.union([
   z.string().min(1).transform((value) => {
     const [title = '', ...rest] = value.split(':');
@@ -24,6 +39,7 @@ export const drillValidation = {
       description: z.string().min(10),
       cover: z.string().min(1).optional(),
       coverPhoto: z.string().min(1).optional(),
+      youtubeUrl: youtubeUrlSchema,
       listIcon: z.string().min(1).default('baseball-outline').optional(),
       accessLevel: z.enum(['free', 'premium', 'Free', 'Premium']).transform((value) =>
         value.toLowerCase() as 'free' | 'premium',

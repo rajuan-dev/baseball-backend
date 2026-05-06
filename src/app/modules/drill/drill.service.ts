@@ -8,6 +8,7 @@ import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 import { drillCategoryModel } from '../drill-category/drill-category.model';
 
 import { drillModel } from './drill.model';
+import { normalizeYouTubeUrl } from './drill.youtube';
 
 const getAll = async (query: {
   page?: unknown;
@@ -59,6 +60,7 @@ const getAll = async (query: {
         categoryId: 1,
         description: 1,
         cover: 1,
+        youtubeUrl: 1,
         listIcon: 1,
         accessLevel: 1,
         coverPhoto: '$cover',
@@ -102,6 +104,7 @@ const getAll = async (query: {
       isPremium: item.accessLevel === 'premium',
       isLocked: item.accessLevel === 'premium',
       focusPoints,
+      youtubeUrl: item.youtubeUrl || null,
     };
   });
 
@@ -155,6 +158,7 @@ const getById = async (id: string) => {
     categoryName: category?.name || 'Unknown',
     description: drill.description,
     cover: coverUrl,
+    youtubeUrl: drill.youtubeUrl || null,
     listIcon: drill.listIcon || 'baseball-outline',
     coverUrl,
     coverPhoto: coverUrl,
@@ -180,6 +184,7 @@ const save = async (
     description: string;
     cover?: string;
     coverPhoto?: string;
+    youtubeUrl?: string | null;
     listIcon?: string;
     accessLevel: 'free' | 'premium';
     steps?: string[];
@@ -197,6 +202,7 @@ const save = async (
     categoryId: payload.categoryId,
     description: payload.description,
     cover: payload.cover || payload.coverPhoto,
+    youtubeUrl: normalizeYouTubeUrl(payload.youtubeUrl) || null,
     listIcon: payload.listIcon || 'baseball-outline',
     accessLevel: payload.accessLevel,
     steps: payload.steps || [],
