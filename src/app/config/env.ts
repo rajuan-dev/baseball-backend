@@ -86,6 +86,10 @@ const envSchema = z
       z.string().url('APP_BASE_URL must be a valid URL').optional(),
     ),
     MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
+    MONGODB_DNS_FALLBACK_SERVERS: z
+      .string()
+      .default('1.1.1.1,8.8.8.8')
+      .transform(splitCsv),
     LOG_LEVEL: z.string().default('info'),
     CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:3000').transform(splitCsv),
     DEFAULT_ADMIN_NAME: z.string().min(1, 'DEFAULT_ADMIN_NAME is required'),
