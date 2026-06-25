@@ -30,6 +30,17 @@ const focusPointSchema = z.union([
   }),
 ]);
 
+const equipmentSchema = z.union([
+  z.string().min(1).transform((value) => ({
+    name: value.trim(),
+    link: null,
+  })),
+  z.object({
+    name: z.string().min(1),
+    link: z.string().url('Please enter a valid URL.').or(z.string().length(0)).nullable().optional(),
+  }),
+]);
+
 export const drillValidation = {
   save: z.object({
     body: z.object({
@@ -44,9 +55,9 @@ export const drillValidation = {
       accessLevel: z.enum(['free', 'premium', 'Free', 'Premium']).transform((value) =>
         value.toLowerCase() as 'free' | 'premium',
       ),
-      steps: z.array(z.string().min(1)).min(1, 'At least one step direction is required'),
-      equipment: z.array(z.string().min(1)).min(1, 'At least one equipment item is required'),
-      focusPoints: z.array(focusPointSchema).min(1, 'At least one focus point is required'),
+      steps: z.array(z.string().min(1)).optional().default([]),
+      equipment: z.array(equipmentSchema).optional().default([]),
+      focusPoints: z.array(focusPointSchema).optional().default([]),
     }).refine((data) => data.name || data.drillName, {
       message: 'Drill name is required',
       path: ['name'],

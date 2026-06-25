@@ -90,6 +90,7 @@ const getAll = async (query: {
   const items = drills.map((item) => {
     const coverUrl = buildPublicFileUrl(item.cover);
     const focusPoints = normalizeFocusPoints(item.focusPoints);
+    const equipment = normalizeEquipment(item.equipment);
 
     return {
       ...item,
@@ -104,6 +105,7 @@ const getAll = async (query: {
       isPremium: item.accessLevel === 'premium',
       isLocked: item.accessLevel === 'premium',
       focusPoints,
+      equipment,
       youtubeUrl: item.youtubeUrl || null,
     };
   });
@@ -132,6 +134,24 @@ const normalizeFocusPoints = (items?: Array<string | { title?: string; descripti
       };
     })
     .filter((item) => item.title || item.description);
+
+
+const normalizeEquipment = (items?: Array<string | { name?: string; link?: string }>) =>
+  (items || [])
+    .map((item) => {
+      if (typeof item === 'string') {
+        return {
+          name: item.trim(),
+          link: null,
+        };
+      }
+
+      return {
+        name: (item.name || '').trim(),
+        link: (item.link || '').trim() || null,
+      };
+    })
+    .filter((item) => item.name);
 
 
 const getById = async (id: string) => {
@@ -168,7 +188,7 @@ const getById = async (id: string) => {
     isPremium: drill.accessLevel === 'premium',
     isLocked: drill.accessLevel === 'premium',
     steps: drill.steps,
-    equipment: drill.equipment,
+    equipment: normalizeEquipment(drill.equipment),
     focusPoints: normalizeFocusPoints(drill.focusPoints),
     createdAt: drill.createdAt,
     updatedAt: drill.updatedAt,
@@ -206,7 +226,7 @@ const save = async (
     listIcon: payload.listIcon || 'baseball-outline',
     accessLevel: payload.accessLevel,
     steps: payload.steps || [],
-    equipment: payload.equipment || [],
+    equipment: normalizeEquipment(payload.equipment),
     focusPoints: normalizeFocusPoints(payload.focusPoints),
   };
 

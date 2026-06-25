@@ -22,7 +22,7 @@ const drillSchema = new Schema(
       default: [],
     },
     equipment: {
-      type: [String],
+      type: [Schema.Types.Mixed],
       default: [],
     },
     focusPoints: {
