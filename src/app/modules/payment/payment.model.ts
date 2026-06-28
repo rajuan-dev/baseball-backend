@@ -30,4 +30,7 @@ const transactionSchema = new Schema<ITransaction>(
   },
 );
 
+transactionSchema.index({ createdAt: -1 });
+transactionSchema.index({ status: 1, createdAt: -1 });
+
 export const transactionModel = model<ITransaction>('Transaction', transactionSchema);

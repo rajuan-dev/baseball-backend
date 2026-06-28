@@ -36,6 +36,10 @@ const drillSchema = new Schema(
   },
 );
 
+drillSchema.index({ createdAt: -1 });
+drillSchema.index({ categoryId: 1, createdAt: -1 });
+drillSchema.index({ accessLevel: 1, createdAt: -1 });
+
 export type IDrill = InferSchemaType<typeof drillSchema> & { _id?: string };
 
 export const drillModel = model<IDrill>('Drill', drillSchema);

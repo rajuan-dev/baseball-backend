@@ -12,6 +12,11 @@ export type AuthPrincipal = {
   role: 'admin' | 'user';
 };
 
+type AuthenticatedRequest = Request & {
+  authEntity?: Record<string, unknown>;
+  user: AuthPrincipal;
+};
+
 const readBearerToken = (req: Request): string | null => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
@@ -41,14 +46,18 @@ export const requireAuth = (role?: 'admin' | 'user') => {
         if (!admin || !admin.isActive) {
           throw new ApiError(StatusCodes.UNAUTHORIZED, 'Admin account is unavailable');
         }
+
+        (req as AuthenticatedRequest).authEntity = admin as unknown as Record<string, unknown>;
       } else {
         const user = await appUserModel.findById(decoded.sub).lean();
         if (!user || !user.isActive) {
           throw new ApiError(StatusCodes.UNAUTHORIZED, 'User account is unavailable');
         }
+
+        (req as AuthenticatedRequest).authEntity = user as unknown as Record<string, unknown>;
       }
 
-      (req as Request & { user: AuthPrincipal }).user = {
+      (req as AuthenticatedRequest).user = {
         id: decoded.sub,
         email: decoded.email,
         role: decoded.role,

@@ -1,6 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 
 import { catchAsync } from '../../utils/catchAsync';
+import { buildPublicFileUrl } from '../../utils/fileUrl';
 import { response } from '../../utils/sendResponse';
 
 import { adminService } from './admin.service';
@@ -14,8 +15,23 @@ export const adminController = {
     });
   }),
   getProfile: catchAsync(async (req, res) => {
-    const principal = (req as typeof req & { user: { id: string } }).user;
-    const result = await adminService.getProfile(principal.id);
+    const request = req as typeof req & {
+      authEntity?: Record<string, unknown>;
+      user: { id: string; role?: string };
+    };
+    const principal = request.user;
+    const cachedAdmin = request.authEntity;
+    const result =
+      principal.role === 'admin' && cachedAdmin
+        ? {
+            id: String(cachedAdmin._id),
+            name: String(cachedAdmin.name ?? ''),
+            email: String(cachedAdmin.email ?? ''),
+            role: 'Super Admin',
+            image: buildPublicFileUrl(typeof cachedAdmin.image === 'string' ? cachedAdmin.image : ''),
+            contactNo: String(cachedAdmin.contactNo ?? ''),
+          }
+        : await adminService.getProfile(principal.id);
     response.success(res, {
       statusCode: StatusCodes.OK,
       message: 'Admin profile fetched successfully',

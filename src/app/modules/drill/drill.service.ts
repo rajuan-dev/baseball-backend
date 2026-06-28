@@ -1,4 +1,4 @@
-import mongoose, { PipelineStage } from 'mongoose';
+import mongoose from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
@@ -10,14 +10,11 @@ import { drillCategoryModel } from '../drill-category/drill-category.model';
 import { drillModel } from './drill.model';
 import { normalizeYouTubeUrl } from './drill.youtube';
 
-const getAll = async (query: {
-  page?: unknown;
-  limit?: unknown;
+const buildDrillMatch = (query: {
   categoryId?: unknown;
   accessLevel?: unknown;
   search?: unknown;
-} = {}) => {
-  const { page, limit, skip } = getPagination(query);
+}) => {
   const categoryId = typeof query.categoryId === 'string' ? query.categoryId : '';
   const accessLevel = typeof query.accessLevel === 'string' ? query.accessLevel.toLowerCase() : '';
   const search = typeof query.search === 'string' ? query.search.trim() : '';
@@ -38,85 +35,84 @@ const getAll = async (query: {
     ];
   }
 
-  const basePipeline: PipelineStage[] = [
-    { $match: matchStage },
-    {
-      $lookup: {
-        from: 'drillcategories',
-        localField: 'categoryId',
-        foreignField: '_id',
-        as: 'category',
-      },
-    },
-    {
-      $addFields: {
-        category: { $arrayElemAt: ['$category', 0] },
-      },
-    },
-    {
-      $project: {
-        id: '$_id',
-        name: 1,
-        categoryId: 1,
-        description: 1,
-        cover: 1,
-        youtubeUrl: 1,
-        listIcon: 1,
-        accessLevel: 1,
-        coverPhoto: '$cover',
-        coverPhotoUrl: '$cover',
-        drillName: '$name',
-        steps: 1,
-        equipment: 1,
-        focusPoints: 1,
-        createdAt: 1,
-        updatedAt: 1,
-        categoryName: '$category.name',
-        category: {
-          id: '$category._id',
-          categoryName: '$category.name',
-          accessLevel: '$category.accessLevel',
-        },
-      },
-    },
-    { $sort: { createdAt: -1 as const } },
-  ];
+  return matchStage;
+};
 
-  const [drills, totalResult] = await Promise.all([
-    drillModel.aggregate([...basePipeline, { $skip: skip }, { $limit: limit }]),
-    drillModel.aggregate([...basePipeline, { $count: 'total' }]),
-  ]);
-
-  const items = drills.map((item) => {
-    const coverUrl = buildPublicFileUrl(item.cover);
-    const focusPoints = normalizeFocusPoints(item.focusPoints);
-    const equipment = normalizeEquipment(item.equipment);
-
-    return {
-      ...item,
-      id: String(item.id),
-      categoryId: String(item.categoryId),
-      cover: coverUrl,
-      listIcon: item.listIcon || 'baseball-outline',
-      coverUrl,
-      coverPhoto: coverUrl,
-      coverPhotoUrl: coverUrl,
-      imageUrl: coverUrl,
-      isPremium: item.accessLevel === 'premium',
-      isLocked: item.accessLevel === 'premium',
-      focusPoints,
-      equipment,
-      youtubeUrl: item.youtubeUrl || null,
-    };
-  });
+const mapDrillListItem = (item: Record<string, unknown>) => {
+  const rawCategory =
+    item.categoryId && typeof item.categoryId === 'object'
+      ? (item.categoryId as Record<string, unknown>)
+      : null;
+  const resolvedCategoryId = rawCategory?._id ?? item.categoryId;
+  const coverUrl = buildPublicFileUrl(typeof item.cover === 'string' ? item.cover : undefined);
+  const focusPoints = normalizeFocusPoints(item.focusPoints as DrillFocusPointInput[] | undefined);
+  const equipment = normalizeEquipment(item.equipment as DrillEquipmentInput[] | undefined);
 
   return {
-    items,
-    pagination: buildPaginationMeta(page, limit, totalResult[0]?.total || 0),
+    id: String(item._id),
+    name: item.name,
+    categoryId: String(resolvedCategoryId),
+    description: item.description,
+    cover: coverUrl,
+    youtubeUrl: item.youtubeUrl || null,
+    listIcon: item.listIcon || 'baseball-outline',
+    accessLevel: item.accessLevel,
+    coverUrl,
+    coverPhoto: coverUrl,
+    coverPhotoUrl: coverUrl,
+    imageUrl: coverUrl,
+    isPremium: item.accessLevel === 'premium',
+    isLocked: item.accessLevel === 'premium',
+    drillName: item.name,
+    steps: Array.isArray(item.steps) ? item.steps : [],
+    equipment,
+    focusPoints,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    categoryName: typeof rawCategory?.name === 'string' ? rawCategory.name : '',
+    category: rawCategory
+      ? {
+          id: String(rawCategory._id),
+          categoryName: rawCategory.name,
+          accessLevel: rawCategory.accessLevel,
+        }
+      : null,
   };
 };
 
-const normalizeFocusPoints = (items?: Array<string | { title?: string; description?: string }>) =>
+type DrillFocusPointInput = string | { title?: string; description?: string };
+type DrillEquipmentInput = string | { name?: string; link?: string };
+
+const getAll = async (query: {
+  page?: unknown;
+  limit?: unknown;
+  categoryId?: unknown;
+  accessLevel?: unknown;
+  search?: unknown;
+} = {}) => {
+  const { page, limit, skip } = getPagination(query);
+  const matchStage = buildDrillMatch(query);
+
+  const [drills, totalResult] = await Promise.all([
+    drillModel
+      .find(matchStage)
+      .sort({ createdAt: -1 as const })
+      .skip(skip)
+      .limit(limit)
+      .select('name categoryId description cover youtubeUrl listIcon accessLevel steps equipment focusPoints createdAt updatedAt')
+      .populate({ path: 'categoryId', select: 'name accessLevel', options: { lean: true } })
+      .lean(),
+    drillModel.countDocuments(matchStage),
+  ]);
+  const items = drills.map((item) => mapDrillListItem(item as unknown as Record<string, unknown>));
+
+  return {
+    items,
+    pagination: buildPaginationMeta(page, limit, totalResult),
+  };
+};
+
+const normalizeFocusPoints = (items?: DrillFocusPointInput[]) =>
   (items || [])
     .map((item) => {
       if (typeof item === 'string') {
@@ -136,7 +132,7 @@ const normalizeFocusPoints = (items?: Array<string | { title?: string; descripti
     .filter((item) => item.title || item.description);
 
 
-const normalizeEquipment = (items?: Array<string | { name?: string; link?: string }>) =>
+const normalizeEquipment = (items?: DrillEquipmentInput[]) =>
   (items || [])
     .map((item) => {
       if (typeof item === 'string') {

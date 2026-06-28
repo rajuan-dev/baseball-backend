@@ -6,23 +6,35 @@ import { appUserModel } from '../auth/app-user.model';
 const getOverview = async () => {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const [categoryCount, totalUsers, freeDrills, premiumDrills, transactions] = await Promise.all([
+  const [
+    categoryCount,
+    totalUsers,
+    freeDrills,
+    premiumDrills,
+    transactions,
+    totalPurchases,
+    monthlyRevenueAgg,
+  ] = await Promise.all([
     drillCategoryModel.countDocuments(),
     appUserModel.countDocuments(),
     drillModel.countDocuments({ accessLevel: 'free' }),
     drillModel.countDocuments({ accessLevel: 'premium' }),
-    transactionModel.find().sort({ createdAt: -1 }).limit(5).lean(),
-  ]);
-
-  const totalPurchases = await transactionModel.countDocuments();
-  const monthlyRevenueAgg = await transactionModel.aggregate([
-    { $match: { createdAt: { $gte: monthStart }, status: { $ne: 'failed' } } },
-    {
-      $group: {
-        _id: null,
-        total: { $sum: '$amount' },
+    transactionModel
+      .find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('userEmail purchaseType amount status paymentMethod createdAt')
+      .lean(),
+    transactionModel.countDocuments(),
+    transactionModel.aggregate([
+      { $match: { createdAt: { $gte: monthStart }, status: { $ne: 'failed' } } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' },
+        },
       },
-    },
+    ]),
   ]);
 
   return {
