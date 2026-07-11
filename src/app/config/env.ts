@@ -122,6 +122,9 @@ const envSchema = z
     AWS_S3_PUBLIC_BASE_URL: emptyStringToUndefined(
       z.string().url('AWS_S3_PUBLIC_BASE_URL must be a valid URL').optional(),
     ),
+    REVENUECAT_SECRET_API_KEY: emptyStringToUndefined(z.string().optional()),
+    REVENUECAT_WEBHOOK_AUTH_TOKEN: emptyStringToUndefined(z.string().optional()),
+    REVENUECAT_WEBHOOK_HEADER_NAME: z.string().default('Authorization'),
     RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
     RESEND_FROM_EMAIL: z.email('RESEND_FROM_EMAIL must be a valid email'),
   })

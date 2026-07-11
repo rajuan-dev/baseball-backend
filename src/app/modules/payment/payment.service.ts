@@ -11,11 +11,19 @@ const mapTransaction = (item: Record<string, unknown>) => ({
   subscriptionStatus: item.status || 'paid',
   status: item.status || 'paid',
   amount: item.amount,
-  paymentDate: item.createdAt,
-  date: item.createdAt,
-  paymentMethod: item.paymentMethod || 'manual',
-  source: item.paymentMethod || 'manual',
+  paymentDate: item.purchasedAt || item.createdAt,
+  date: item.purchasedAt || item.createdAt,
+  paymentMethod: item.paymentMethod || item.store || 'manual',
+  source: item.store || item.paymentMethod || 'manual',
 });
+
+const PURCHASE_COUNT_FILTER = {
+  status: { $in: ['paid', 'pending'] },
+};
+
+const REVENUE_FILTER = {
+  status: 'paid',
+};
 
 const getAll = async (query: {
   page?: unknown;
@@ -54,13 +62,13 @@ const getSummary = async () => {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const [totalPurchases, revenueAgg, monthlyRevenueAgg] = await Promise.all([
-    transactionModel.countDocuments({ status: { $ne: 'failed' } }),
+    transactionModel.countDocuments(PURCHASE_COUNT_FILTER),
     transactionModel.aggregate([
-      { $match: { status: { $ne: 'failed' } } },
+      { $match: REVENUE_FILTER },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]),
     transactionModel.aggregate([
-      { $match: { status: { $ne: 'failed' }, createdAt: { $gte: monthStart } } },
+      { $match: { ...REVENUE_FILTER, createdAt: { $gte: monthStart } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]),
   ]);

@@ -1,7 +1,6 @@
 import { drillCategoryModel } from '../modules/drill-category/drill-category.model';
 import { drillModel } from '../modules/drill/drill.model';
 import { notificationModel } from '../modules/notification/notification.model';
-import { transactionModel } from '../modules/payment/payment.model';
 import { reportModel } from '../modules/report/report.model';
 import { settingsModel } from '../modules/settings/settings.model';
 import { situationModel } from '../modules/situation/situation.model';
@@ -150,23 +149,6 @@ const seedApplicationData = async (): Promise<void> => {
         title: 'A new user joined',
         description: 'Membership purchase has been completed successfully.',
         isUnread: false,
-      },
-    ]);
-  }
-
-  if (!(await transactionModel.countDocuments())) {
-    await transactionModel.insertMany([
-      {
-        userEmail: 'm.thompson@icloud.com',
-        purchaseType: 'Elite Season Pass',
-        amount: 249,
-        country: 'United States',
-      },
-      {
-        userEmail: 'coach_wilson@gmail.com',
-        purchaseType: 'Unlock All Drills',
-        amount: 99.99,
-        country: 'United States',
       },
     ]);
   }
