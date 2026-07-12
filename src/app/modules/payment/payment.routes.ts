@@ -12,6 +12,7 @@ paymentRoutes.get('/transactions', requireAuth('admin'), paymentController.getAl
 paymentRoutes.get('/summary', requireAuth('admin'), paymentController.getSummary);
 paymentRoutes.post(
   '/complete',
+  requireAuth('admin'),
   validateRequest(paymentValidation.completePurchase),
   paymentController.completePurchase,
 );

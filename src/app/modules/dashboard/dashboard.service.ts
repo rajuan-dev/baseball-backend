@@ -1,17 +1,47 @@
 import { drillCategoryModel } from '../drill-category/drill-category.model';
 import { drillModel } from '../drill/drill.model';
 import { transactionModel } from '../payment/payment.model';
-import { appUserModel } from '../auth/app-user.model';
+
+const normalizeMoneyValue = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getRevenueDateExpression = {
+  $ifNull: ['$purchasedAt', '$createdAt'],
+};
 
 const getOverview = async () => {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const purchaseCountFilter = { status: { $in: ['paid', 'pending'] } };
-  const revenueFilter = { status: 'paid' };
+  const activityFilter = { status: { $in: ['paid', 'pending'] } };
+  const productionRevenueCatFilter = {
+    revenueCatEventId: { $ne: null },
+    environment: 'PRODUCTION',
+  };
+  const purchaseCountFilter = {
+    ...productionRevenueCatFilter,
+    status: { $in: ['paid', 'pending'] },
+  };
+  const revenueFilter = {
+    ...productionRevenueCatFilter,
+    status: 'paid',
+  };
+  const revenueCatUserFilter = {
+    revenueCatEventId: { $ne: null },
+  };
+  const revenueCatPremiumUserFilter = {
+    ...revenueCatUserFilter,
+    status: { $in: ['paid', 'pending'] },
+  };
   const [
     categoryCount,
-    totalUsers,
-    premiumUsers,
+    revenueCatUsers,
+    revenueCatPremiumUsers,
     freeDrills,
     premiumDrills,
     transactions,
@@ -20,15 +50,17 @@ const getOverview = async () => {
     monthlyRevenueAgg,
   ] = await Promise.all([
     drillCategoryModel.countDocuments(),
-    appUserModel.countDocuments(),
-    appUserModel.countDocuments({ isPremium: true }),
+    transactionModel.distinct('userEmail', revenueCatUserFilter),
+    transactionModel.distinct('userEmail', revenueCatPremiumUserFilter),
     drillModel.countDocuments({ accessLevel: 'free' }),
     drillModel.countDocuments({ accessLevel: 'premium' }),
     transactionModel
-      .find(purchaseCountFilter)
+      .find(activityFilter)
       .sort({ createdAt: -1 })
       .limit(10)
-      .select('userEmail purchaseType amount status paymentMethod store purchasedAt createdAt')
+      .select(
+        'userEmail purchaseType amount status paymentMethod store environment currency revenueCatEventId purchasedAt createdAt',
+      )
       .lean(),
     transactionModel.countDocuments(purchaseCountFilter),
     transactionModel.aggregate([
@@ -41,7 +73,12 @@ const getOverview = async () => {
       },
     ]),
     transactionModel.aggregate([
-      { $match: { ...revenueFilter, createdAt: { $gte: monthStart } } },
+      {
+        $match: {
+          ...revenueFilter,
+          $expr: { $gte: [getRevenueDateExpression, monthStart] },
+        },
+      },
       {
         $group: {
           _id: null,
@@ -53,21 +90,28 @@ const getOverview = async () => {
 
   return {
     totalPurchases,
-    totalRevenue: totalRevenueAgg[0]?.total || 0,
-    monthlyRevenue: monthlyRevenueAgg[0]?.total || 0,
+    totalRevenue: normalizeMoneyValue(totalRevenueAgg[0]?.total),
+    monthlyRevenue: normalizeMoneyValue(monthlyRevenueAgg[0]?.total),
     categoryCount,
     totalDrillCategories: categoryCount,
-    totalUsers,
-    premiumUsers,
+    totalUsers: revenueCatUsers.length,
+    premiumUsers: revenueCatPremiumUsers.length,
     totalFreeDrills: freeDrills,
     totalPremiumDrills: premiumDrills,
     recentActivity: transactions.map((item) => ({
       id: String(item._id),
       userEmail: item.userEmail,
       purchaseType: item.purchaseType,
-      amount: item.amount,
+      amount: normalizeMoneyValue(item.amount),
       status: item.status || 'paid',
       paymentMethod: item.paymentMethod || item.store || 'manual',
+      store: item.store || null,
+      environment: item.environment || null,
+      currency: item.currency || 'USD',
+      source:
+        item.revenueCatEventId || item.paymentMethod === 'revenuecat'
+          ? 'revenuecat'
+          : item.paymentMethod || item.store || 'manual',
       date: item.purchasedAt || item.createdAt,
     })),
   };

@@ -146,15 +146,15 @@ const getPurchaseType = (event: RevenueCatEvent) => {
 };
 
 const getAmount = (event: RevenueCatEvent) => {
-  if (typeof event.price === 'number' && Number.isFinite(event.price)) {
-    return event.price;
-  }
-
   if (
     typeof event.price_in_purchased_currency === 'number' &&
     Number.isFinite(event.price_in_purchased_currency)
   ) {
     return event.price_in_purchased_currency;
+  }
+
+  if (typeof event.price === 'number' && Number.isFinite(event.price)) {
+    return event.price;
   }
 
   return 0;

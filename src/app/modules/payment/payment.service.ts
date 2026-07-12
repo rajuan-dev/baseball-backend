@@ -3,6 +3,19 @@ import { settingsService } from '../settings/settings.service';
 import { appUserModel } from '../auth/app-user.model';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 
+const normalizeMoneyValue = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getRevenueDateExpression = {
+  $ifNull: ['$purchasedAt', '$createdAt'],
+};
+
 const mapTransaction = (item: Record<string, unknown>) => ({
   id: String(item._id),
   userEmail: item.userEmail,
@@ -10,18 +23,31 @@ const mapTransaction = (item: Record<string, unknown>) => ({
   purchaseType: item.purchaseType,
   subscriptionStatus: item.status || 'paid',
   status: item.status || 'paid',
-  amount: item.amount,
+  amount: normalizeMoneyValue(item.amount),
   paymentDate: item.purchasedAt || item.createdAt,
   date: item.purchasedAt || item.createdAt,
   paymentMethod: item.paymentMethod || item.store || 'manual',
-  source: item.store || item.paymentMethod || 'manual',
+  store: item.store || null,
+  environment: item.environment || null,
+  currency: item.currency || 'USD',
+  source:
+    item.revenueCatEventId || item.paymentMethod === 'revenuecat'
+      ? 'revenuecat'
+      : item.store || item.paymentMethod || 'manual',
 });
 
+const PRODUCTION_REVENUECAT_FILTER = {
+  revenueCatEventId: { $ne: null },
+  environment: 'PRODUCTION',
+};
+
 const PURCHASE_COUNT_FILTER = {
+  ...PRODUCTION_REVENUECAT_FILTER,
   status: { $in: ['paid', 'pending'] },
 };
 
 const REVENUE_FILTER = {
+  ...PRODUCTION_REVENUECAT_FILTER,
   status: 'paid',
 };
 
@@ -68,15 +94,20 @@ const getSummary = async () => {
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]),
     transactionModel.aggregate([
-      { $match: { ...REVENUE_FILTER, createdAt: { $gte: monthStart } } },
+      {
+        $match: {
+          ...REVENUE_FILTER,
+          $expr: { $gte: [getRevenueDateExpression, monthStart] },
+        },
+      },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]),
   ]);
 
   return {
     totalPurchases,
-    totalRevenue: revenueAgg[0]?.total || 0,
-    monthlyRevenue: monthlyRevenueAgg[0]?.total || 0,
+    totalRevenue: normalizeMoneyValue(revenueAgg[0]?.total),
+    monthlyRevenue: normalizeMoneyValue(monthlyRevenueAgg[0]?.total),
   };
 };
 
