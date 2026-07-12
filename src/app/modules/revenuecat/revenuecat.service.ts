@@ -756,6 +756,9 @@ const buildRevenueCatLiveSnapshot = async (): Promise<RevenueCatLiveSnapshot> =>
   const activeTransactions = transactions.filter(
     (transaction) => transaction.status === 'paid' || transaction.status === 'pending',
   );
+  const premiumUsersFromTransactions = new Set(
+    activeTransactions.map((transaction) => transaction.userEmail),
+  );
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const productionPaidTransactions = transactions.filter(
@@ -766,7 +769,10 @@ const buildRevenueCatLiveSnapshot = async (): Promise<RevenueCatLiveSnapshot> =>
 
   return {
     totalUsers: customers.length,
-    premiumUsers: customers.filter((customer) => hasActiveEntitlements(customer)).length,
+    premiumUsers: customers.filter((customer) => {
+      const customerEmail = getRevenueCatCustomerEmail(customer);
+      return hasActiveEntitlements(customer) || premiumUsersFromTransactions.has(customerEmail);
+    }).length,
     totalPurchases: activeTransactions.length,
     totalRevenue: productionPaidTransactions.reduce(
       (sum, transaction) => sum + transaction.amountUsd,
