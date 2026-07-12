@@ -1,55 +1,8 @@
-import { transactionModel } from './payment.model';
-import { settingsService } from '../settings/settings.service';
 import { appUserModel } from '../auth/app-user.model';
+import { revenueCatService } from '../revenuecat/revenuecat.service';
+import { settingsService } from '../settings/settings.service';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
-
-const normalizeMoneyValue = (value: unknown) => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const getRevenueDateExpression = {
-  $ifNull: ['$purchasedAt', '$createdAt'],
-};
-
-const mapTransaction = (item: Record<string, unknown>) => ({
-  id: String(item._id),
-  userEmail: item.userEmail,
-  fullName: item.userEmail,
-  purchaseType: item.purchaseType,
-  subscriptionStatus: item.status || 'paid',
-  status: item.status || 'paid',
-  amount: normalizeMoneyValue(item.amount),
-  paymentDate: item.purchasedAt || item.createdAt,
-  date: item.purchasedAt || item.createdAt,
-  paymentMethod: item.paymentMethod || item.store || 'manual',
-  store: item.store || null,
-  environment: item.environment || null,
-  currency: item.currency || 'USD',
-  source:
-    item.revenueCatEventId || item.paymentMethod === 'revenuecat'
-      ? 'revenuecat'
-      : item.store || item.paymentMethod || 'manual',
-});
-
-const PRODUCTION_REVENUECAT_FILTER = {
-  revenueCatEventId: { $ne: null },
-  environment: 'PRODUCTION',
-};
-
-const PURCHASE_COUNT_FILTER = {
-  ...PRODUCTION_REVENUECAT_FILTER,
-  status: { $in: ['paid', 'pending'] },
-};
-
-const REVENUE_FILTER = {
-  ...PRODUCTION_REVENUECAT_FILTER,
-  status: 'paid',
-};
+import { transactionModel } from './payment.model';
 
 const getAll = async (query: {
   page?: unknown;
@@ -59,55 +12,46 @@ const getAll = async (query: {
 } = {}) => {
   const { page, limit, skip } = getPagination(query);
   const price = await settingsService.getUnlockPrice();
-  const filter: Record<string, unknown> = {};
   const status = typeof query.status === 'string' ? query.status.toLowerCase() : '';
-  const search = typeof query.search === 'string' ? query.search.trim() : '';
+  const search = typeof query.search === 'string' ? query.search.trim().toLowerCase() : '';
+  const liveSnapshot = await revenueCatService.getRevenueCatLiveSnapshot();
 
-  if (status && status !== 'all') filter.status = status;
-  if (search) {
-    filter.$or = [
-      { userEmail: { $regex: search, $options: 'i' } },
-      { purchaseType: { $regex: search, $options: 'i' } },
-      { paymentMethod: { $regex: search, $options: 'i' } },
-    ];
-  }
+  const filteredTransactions = liveSnapshot.transactions.filter((transaction) => {
+    if (status && status !== 'all' && transaction.status !== status) {
+      return false;
+    }
 
-  const [transactions, total] = await Promise.all([
-    transactionModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    transactionModel.countDocuments(filter),
-  ]);
+    if (!search) {
+      return true;
+    }
+
+    return [
+      transaction.userEmail,
+      transaction.purchaseType,
+      transaction.paymentMethod,
+      transaction.store,
+      transaction.environment,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(search));
+  });
+
+  const pagedTransactions = filteredTransactions.slice(skip, skip + limit);
 
   return {
     fullUnlockPrice: price,
-    transactions: transactions.map((item) => mapTransaction(item as unknown as Record<string, unknown>)),
-    pagination: buildPaginationMeta(page, limit, total),
+    transactions: pagedTransactions,
+    pagination: buildPaginationMeta(page, limit, filteredTransactions.length),
   };
 };
 
 const getSummary = async () => {
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const [totalPurchases, revenueAgg, monthlyRevenueAgg] = await Promise.all([
-    transactionModel.countDocuments(PURCHASE_COUNT_FILTER),
-    transactionModel.aggregate([
-      { $match: REVENUE_FILTER },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]),
-    transactionModel.aggregate([
-      {
-        $match: {
-          ...REVENUE_FILTER,
-          $expr: { $gte: [getRevenueDateExpression, monthStart] },
-        },
-      },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]),
-  ]);
+  const liveSnapshot = await revenueCatService.getRevenueCatLiveSnapshot();
 
   return {
-    totalPurchases,
-    totalRevenue: normalizeMoneyValue(revenueAgg[0]?.total),
-    monthlyRevenue: normalizeMoneyValue(monthlyRevenueAgg[0]?.total),
+    totalPurchases: liveSnapshot.totalPurchases,
+    totalRevenue: liveSnapshot.totalRevenue,
+    monthlyRevenue: liveSnapshot.monthlyRevenue,
   };
 };
 
@@ -138,6 +82,8 @@ const completePurchase = async (payload: {
     paymentMethod: 'manual',
   });
 
+  revenueCatService.invalidateRevenueCatLiveSnapshotCache();
+
   return {
     success: true,
     transactionId: String(transaction._id),
@@ -147,6 +93,7 @@ const completePurchase = async (payload: {
 
 const updatePrice = async (price: number) => {
   await settingsService.updateUnlockPrice(price);
+  return price;
 };
 
 export const paymentService = {
