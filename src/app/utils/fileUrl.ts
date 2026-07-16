@@ -3,6 +3,32 @@ import { getS3PublicBaseUrl } from '../providers/storage/utils/file';
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const trimLeadingSlash = (value: string) => value.replace(/^\/+/, '');
+const normalizeVersionValue = (value?: unknown): string => {
+  if (!value) {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return String(value.getTime());
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? String(value) : '';
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return '';
+    }
+
+    const parsedDate = Date.parse(trimmed);
+    return Number.isNaN(parsedDate) ? trimmed : String(parsedDate);
+  }
+
+  return '';
+};
 
 const getUploadsBaseUrl = (): string => {
   if (env.PUBLIC_UPLOAD_URL) {
@@ -56,4 +82,25 @@ export const buildPublicFileUrl = (value?: string | null): string => {
 
   const uploadsBaseUrl = getUploadsBaseUrl();
   return `${uploadsBaseUrl}/${normalizedPath}`;
+};
+
+export const buildVersionedPublicFileUrl = (
+  value?: string | null,
+  version?: unknown,
+): string => {
+  const baseUrl = buildPublicFileUrl(value);
+  const normalizedVersion = normalizeVersionValue(version);
+
+  if (!baseUrl || !normalizedVersion) {
+    return baseUrl;
+  }
+
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set('v', normalizedVersion);
+    return url.toString();
+  } catch {
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}v=${encodeURIComponent(normalizedVersion)}`;
+  }
 };

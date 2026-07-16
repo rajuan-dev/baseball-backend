@@ -2,7 +2,7 @@ import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
-import { buildPublicFileUrl } from '../../utils/fileUrl';
+import { buildVersionedPublicFileUrl } from '../../utils/fileUrl';
 import { storageService } from '../../services/storage.service';
 import { drillModel } from '../drill/drill.model';
 
@@ -10,8 +10,9 @@ import { drillCategoryModel } from './drill-category.model';
 
 const mapCategory = async (category: Record<string, unknown>) => {
   const totalDrills = await drillModel.countDocuments({ categoryId: category._id });
-  const coverUrl = buildPublicFileUrl(category.cover as string | undefined);
-  const iconUrl = buildPublicFileUrl(category.icon as string | undefined);
+  const version = category.updatedAt ?? category.createdAt;
+  const coverUrl = buildVersionedPublicFileUrl(category.cover as string | undefined, version);
+  const iconUrl = buildVersionedPublicFileUrl(category.icon as string | undefined, version);
 
   return {
     id: String(category._id),

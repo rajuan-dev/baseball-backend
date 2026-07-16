@@ -2,13 +2,16 @@ import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
 import { storageService } from '../../services/storage.service';
-import { buildPublicFileUrl } from '../../utils/fileUrl';
+import { buildVersionedPublicFileUrl } from '../../utils/fileUrl';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 
 import { situationModel } from './situation.model';
 
 const mapSituation = (item: Record<string, unknown>) => {
-  const imageUrl = buildPublicFileUrl(item.image as string | undefined);
+  const imageUrl = buildVersionedPublicFileUrl(
+    item.image as string | undefined,
+    item.updatedAt ?? item.createdAt,
+  );
 
   return {
     id: String(item._id),

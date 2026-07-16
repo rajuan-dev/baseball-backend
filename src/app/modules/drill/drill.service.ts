@@ -3,7 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 
 import { ApiError } from '../../errors/ApiError';
 import { storageService } from '../../services/storage.service';
-import { buildPublicFileUrl } from '../../utils/fileUrl';
+import { buildVersionedPublicFileUrl } from '../../utils/fileUrl';
 import { buildPaginationMeta, getPagination } from '../../utils/pagination';
 import { drillCategoryModel } from '../drill-category/drill-category.model';
 
@@ -44,7 +44,10 @@ const mapDrillListItem = (item: Record<string, unknown>) => {
       ? (item.categoryId as Record<string, unknown>)
       : null;
   const resolvedCategoryId = rawCategory?._id ?? item.categoryId;
-  const coverUrl = buildPublicFileUrl(typeof item.cover === 'string' ? item.cover : undefined);
+  const coverUrl = buildVersionedPublicFileUrl(
+    typeof item.cover === 'string' ? item.cover : undefined,
+    item.updatedAt ?? item.createdAt,
+  );
   const focusPoints = normalizeFocusPoints(item.focusPoints as DrillFocusPointInput[] | undefined);
   const equipment = normalizeEquipment(item.equipment as DrillEquipmentInput[] | undefined);
 
@@ -157,7 +160,7 @@ const getById = async (id: string) => {
   }
 
   const category = await drillCategoryModel.findById(drill.categoryId).lean();
-  const coverUrl = buildPublicFileUrl(drill.cover);
+  const coverUrl = buildVersionedPublicFileUrl(drill.cover, drill.updatedAt ?? drill.createdAt);
 
   return {
     id: String(drill._id),
